@@ -1064,12 +1064,6 @@
         <div>💰 Stack: <span id="stack-size">1000</span> | 👁️ Blind Level: <span id="blind-level">1</span> | 🏆 Pot: <span id="pot-size">150</span></div>
       </div>
       
-      <!-- Beginner Hints -->
-      <div id="beginners-hints" class="beginners-hints hidden">
-        <h4>💡 Dicas para Iniciante:</h4>
-        <div id="hint-content"></div>
-      </div>
-      
       <!-- Stats Display -->
       <div class="stats">
         <div class="stat-card">
@@ -1120,6 +1114,12 @@
         </div>
       </div>
       
+      <!-- Beginner Hints - Positioned between opponents and question -->
+      <div id="beginners-hints" class="beginners-hints hidden">
+        <h4>💡 Dicas para Iniciante:</h4>
+        <div id="hint-content"></div>
+      </div>
+      
       <!-- Winner Announcement -->
       <div id="winner-announcement" class="winner-announcement hidden">
         <div id="winner-text"></div>
@@ -1132,6 +1132,12 @@
         <div id="winner-hand" style="margin: 15px 0;"></div>
         <div id="winner-cards"></div>
         <button class="btn" onclick="continueToNextHand()">➡️ Próxima Mão</button>
+      </div>
+      
+      <!-- Beginner Hints -->
+      <div id="beginners-hints" class="beginners-hints hidden">
+        <h4>💡 Dicas para Iniciante:</h4>
+        <div id="hint-content"></div>
       </div>
       
       <!-- Question Section -->
@@ -2162,7 +2168,8 @@
       const hintsContainer = document.getElementById('beginners-hints');
       const hintContent = document.getElementById('hint-content');
       
-      if (gameState.gameMode !== 'iniciante') {
+      // Only show hints in iniciante and normal modes
+      if (gameState.gameMode !== 'iniciante' && gameState.gameMode !== 'normal') {
         hintsContainer.classList.add('hidden');
         return;
       }
