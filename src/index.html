@@ -35,6 +35,11 @@
     .container {
       max-width: 1200px;
       margin: 0 auto;
+      transition: padding-top 0.3s ease;
+    }
+    
+    .container.with-banner {
+      padding-top: 80px;
     }
     
     .header {
@@ -59,13 +64,13 @@
       background: #6b7280;
       color: white;
       border: none;
-      padding: 8px 12px;
+      padding: 8px 8px;
       border-radius: 20px;
-      font-size: 11px;
+      font-size: 10px;
       cursor: pointer;
       transition: all 0.3s;
       flex: 1;
-      min-width: 50px;
+      min-width: 55px;
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
@@ -346,6 +351,73 @@
       animation: bounceIn 0.6s ease-out;
     }
     
+    .install-banner {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      background: linear-gradient(135deg, #059669, #047857);
+      color: white;
+      padding: 12px 15px;
+      z-index: 1001;
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+      animation: slideDownBanner 0.5s ease-out;
+    }
+    
+    .install-banner-content {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+    
+    .install-banner-text {
+      flex: 1;
+    }
+    
+    .install-banner-buttons {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+    }
+    
+    .install-banner-install {
+      background: rgba(255, 255, 255, 0.2);
+      color: white;
+      border: 1px solid rgba(255, 255, 255, 0.3);
+      padding: 8px 16px;
+      border-radius: 20px;
+      font-weight: bold;
+      cursor: pointer;
+      transition: all 0.3s;
+      font-size: 14px;
+    }
+    
+    .install-banner-install:hover {
+      background: rgba(255, 255, 255, 0.3);
+      transform: translateY(-1px);
+    }
+    
+    .install-banner-close {
+      background: transparent;
+      color: white;
+      border: none;
+      width: 30px;
+      height: 30px;
+      border-radius: 50%;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 16px;
+      transition: all 0.3s;
+    }
+    
+    .install-banner-close:hover {
+      background: rgba(255, 255, 255, 0.2);
+    }
+    
     .achievement-notification {
       position: fixed;
       top: 20px;
@@ -614,6 +686,11 @@
       }
     }
 
+    @keyframes slideDownBanner {
+      0% { transform: translateY(-100%); opacity: 0; }
+      100% { transform: translateY(0); opacity: 1; }
+    }
+    
     /* Responsive Design */
     @media (max-width: 768px) {
       body {
@@ -766,6 +843,45 @@
         padding: 12px;
       }
       
+      .container.with-banner {
+        padding-top: 90px;
+      }
+      
+      .install-banner {
+        padding: 10px 12px;
+      }
+      
+      .install-banner-content {
+        flex-direction: column;
+        gap: 8px;
+        text-align: center;
+      }
+      
+      .container.with-banner {
+        padding-top: 100px;
+      }
+      
+      .install-banner-text {
+        font-size: 12px;
+      }
+      
+      .install-banner-text div:first-child {
+        font-size: 13px;
+      }
+      
+      .install-banner-text div:last-child {
+        font-size: 10px;
+      }
+      
+      .install-banner-buttons {
+        gap: 8px;
+      }
+      
+      .install-banner-install {
+        font-size: 12px;
+        padding: 6px 12px;
+      }
+      
       .install-prompt {
         left: 10px;
         right: 10px;
@@ -868,7 +984,8 @@
     /* Print styles */
     @media print {
       .install-prompt,
-      .achievement-notification {
+      .achievement-notification,
+      .install-banner {
         display: none !important;
       }
     }
@@ -877,7 +994,47 @@
 <body>
   <div class="container">
     <div class="header">
-      <h1>🎯 Poker Probability Trainer</h1>
+      <h1>
+        <svg width="40" height="40" viewBox="0 0 100 100" style="display: inline-block; vertical-align: middle; margin-right: 10px;">
+          <!-- British flag background -->
+          <circle cx="50" cy="50" r="50" fill="#012169"/>
+          <path d="M0,0 L100,100 M100,0 L0,100" stroke="#fff" stroke-width="10"/>
+          <path d="M50,0 L50,100 M0,50 L100,50" stroke="#fff" stroke-width="16.67"/>
+          <path d="M0,0 L100,100 M100,0 L0,100" stroke="#C8102E" stroke-width="6.67"/>
+          <path d="M50,0 L50,100" stroke="#C8102E" stroke-width="10"/>
+          <path d="M0,50 L100,50" stroke="#C8102E" stroke-width="10"/>
+          
+          <!-- Beer mugs -->
+          <g transform="translate(50,50) scale(0.8)">
+            <!-- Left mug -->
+            <g transform="translate(-15,0)">
+              <rect x="-8" y="-15" width="16" height="20" rx="2" fill="#D2691E" stroke="#8B4513" stroke-width="1"/>
+              <ellipse cx="0" cy="-15" rx="8" ry="3" fill="#F5DEB3"/>
+              <path d="M8,-10 Q15,-10 15,-5 Q15,0 8,0" fill="none" stroke="#8B4513" stroke-width="1.5"/>
+            </g>
+            
+            <!-- Right mug -->
+            <g transform="translate(15,0)">
+              <rect x="-8" y="-15" width="16" height="20" rx="2" fill="#D2691E" stroke="#8B4513" stroke-width="1"/>
+              <ellipse cx="0" cy="-15" rx="8" ry="3" fill="#F5DEB3"/>
+              <path d="M-8,-10 Q-15,-10 -15,-5 Q-15,0 -8,0" fill="none" stroke="#8B4513" stroke-width="1.5"/>
+            </g>
+            
+            <!-- Foam -->
+            <ellipse cx="0" cy="-12" rx="20" ry="8" fill="#F8F8FF" opacity="0.9"/>
+            
+            <!-- Bubbles -->
+            <circle cx="-5" cy="-8" r="1" fill="#FFF" opacity="0.7"/>
+            <circle cx="8" cy="-6" r="0.8" fill="#FFF" opacity="0.7"/>
+            <circle cx="0" cy="-5" r="1.2" fill="#FFF" opacity="0.7"/>
+          </g>
+          
+          <!-- Banner -->
+          <path d="M15,75 Q50,65 85,75 L85,85 Q50,75 15,85 Z" fill="#012169"/>
+          <text x="50" y="82" text-anchor="middle" fill="white" font-size="8" font-weight="bold">FUNDO DE QUADRA</text>
+        </svg>
+        Poker Probability Trainer
+      </h1>
       <p>Treinador profissional de probabilidades com IA avançada</p>
       
       <!-- Mode Selector -->
@@ -887,6 +1044,7 @@
         <button class="mode-btn" onclick="setGameMode('especialista')">🧠 Expert</button>
         <button class="mode-btn" onclick="setGameMode('torneio')">🏆 Torneio</button>
         <button class="mode-btn" onclick="setGameMode('cenario')">📚 Cenário</button>
+        <button class="mode-btn" onclick="showAboutPage()">ℹ️ Sobre</button>
       </div>
     </div>
     
@@ -1061,9 +1219,80 @@
         </div>
       </div>
     </div>
+    
+    <!-- About Tab -->
+    <div id="about-tab" class="tab-content hidden">
+      <div style="background: linear-gradient(135deg, #16a34a, #059669); min-height: 500px; padding: 40px; border-radius: 15px; text-align: center; color: white;">
+        <div style="max-width: 600px; margin: 0 auto;">
+          <h1 style="font-size: 36px; margin-bottom: 30px; text-shadow: 2px 2px 4px rgba(0,0,0,0.3);">
+            🍺 Sobre o App 🍺
+          </h1>
+          
+          <div style="background: rgba(255,255,255,0.1); padding: 30px; border-radius: 20px; margin-bottom: 30px; backdrop-filter: blur(10px);">
+            <h2 style="font-size: 24px; margin-bottom: 20px;">📖 Aplicativo Open Source</h2>
+            <p style="font-size: 18px; line-height: 1.6; margin-bottom: 20px;">
+              Este é um aplicativo de código aberto para treinar probabilidades no poker Texas Hold'em.
+            </p>
+            <p style="font-size: 16px; line-height: 1.5; color: #f0f9ff;">
+              Se você for usar este código, por favor <strong>dê os devidos créditos</strong> aos desenvolvedores.
+            </p>
+          </div>
+          
+          <div style="background: rgba(255,255,255,0.1); padding: 30px; border-radius: 20px; margin-bottom: 30px; backdrop-filter: blur(10px);">
+            <h2 style="font-size: 24px; margin-bottom: 25px;">👨‍💻 Desenvolvido por:</h2>
+            
+            <div style="margin-bottom: 25px;">
+              <h3 style="font-size: 20px; margin-bottom: 10px;">Bruno Machado</h3>
+              <a href="https://x.com/brmguma" target="_blank" style="color: #60a5fa; text-decoration: none; font-size: 16px; font-weight: bold;">
+                🐦 @brmguma no X (Twitter)
+              </a>
+            </div>
+            
+            <div>
+              <h3 style="font-size: 20px; margin-bottom: 10px;">Time Ukzinho</h3>
+              <a href="https://www.instagram.com/canaldoukzinho" target="_blank" style="color: #f472b6; text-decoration: none; font-size: 16px; font-weight: bold;">
+                📱 @canaldoukzinho no Instagram
+              </a>
+            </div>
+          </div>
+          
+          <div style="background: rgba(255,255,255,0.1); padding: 25px; border-radius: 20px; backdrop-filter: blur(10px);">
+            <h2 style="font-size: 20px; margin-bottom: 15px;">🎯 Recursos do App</h2>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; text-align: left;">
+              <div>• 5 modos de jogo diferentes</div>
+              <div>• Cálculos oficiais de poker</div>
+              <div>• Sistema de conquistas</div>
+              <div>• Análise de blockers e outs</div>
+              <div>• Estatísticas avançadas</div>
+              <div>• PWA instalável</div>
+            </div>
+          </div>
+          
+          <div style="margin-top: 30px;">
+            <button class="btn" onclick="showTab('game')" style="background: linear-gradient(135deg, #f59e0b, #d97706); padding: 15px 30px; font-size: 18px;">
+              🃏 Voltar ao Jogo
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
   
-  <!-- Install Button -->
+  <!-- Install Banner -->
+  <div id="install-banner" class="install-banner" style="display: none;">
+    <div class="install-banner-content">
+      <div class="install-banner-text">
+        <div style="font-weight: bold; margin-bottom: 2px;">📱 Instalar Poker Trainer</div>
+        <div style="font-size: 12px; opacity: 0.9;">Adicione à tela inicial para acesso rápido</div>
+      </div>
+      <div class="install-banner-buttons">
+        <button id="install-banner-btn" class="install-banner-install">Instalar</button>
+        <button id="close-banner-btn" class="install-banner-close">✕</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Install Button (original) -->
   <button id="install-btn" class="install-prompt" style="display: none;">
     📱 Instalar App
   </button>
@@ -2512,6 +2741,16 @@
       });
       event.target.classList.add('active');
       
+      // Hide about tab if it's showing and show game tab
+      document.getElementById('about-tab').classList.add('hidden');
+      document.getElementById('game-tab').classList.remove('hidden');
+      
+      // Update tabs to show game as active
+      document.querySelectorAll('.tab').forEach(tab => {
+        tab.classList.remove('active');
+      });
+      document.querySelector('.tab[onclick="showTab(\'game\')"]').classList.add('active');
+      
       // Reset some values for new mode
       if (mode === 'torneio') {
         gameState.stackSize = 1000;
@@ -3115,6 +3354,29 @@
       }
     }
     
+    function showAboutPage() {
+      // Hide all tabs
+      document.querySelectorAll('.tab-content').forEach(tab => {
+        tab.classList.add('hidden');
+      });
+      
+      // Remove active class from all tabs
+      document.querySelectorAll('.tab').forEach(tab => {
+        tab.classList.remove('active');
+      });
+      
+      // Remove active class from all mode buttons
+      document.querySelectorAll('.mode-btn').forEach(btn => {
+        btn.classList.remove('active');
+      });
+      
+      // Add active class to about button
+      event.target.classList.add('active');
+      
+      // Show about tab
+      document.getElementById('about-tab').classList.remove('hidden');
+    }
+    
     // Local Storage functions
     function saveGame() {
       try {
@@ -3136,13 +3398,71 @@
       }
     }
     
-    // PWA Installation
+    // PWA Installation with Banner
     let deferredPrompt;
+    let installBannerDismissed = false;
+    
+    function checkInstallBanner() {
+      // Check if user has dismissed the banner before
+      const dismissed = localStorage.getItem('install_banner_dismissed');
+      const isInstalled = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
+      
+      if (!dismissed && !isInstalled && deferredPrompt) {
+        showInstallBanner();
+      } else if (!deferredPrompt) {
+        // Hide banner if no install prompt is available
+        hideInstallBanner();
+      }
+    }
+    
+    function showInstallBanner() {
+      const banner = document.getElementById('install-banner');
+      const container = document.querySelector('.container');
+      
+      banner.style.display = 'block';
+      container.classList.add('with-banner');
+      
+      // Setup banner install button
+      const bannerInstallBtn = document.getElementById('install-banner-btn');
+      bannerInstallBtn.addEventListener('click', async () => {
+        if (deferredPrompt) {
+          deferredPrompt.prompt();
+          const { outcome } = await deferredPrompt.userChoice;
+          
+          if (outcome === 'accepted') {
+            hideInstallBanner();
+          }
+          
+          deferredPrompt = null;
+        }
+      });
+      
+      // Setup close button
+      const closeBtn = document.getElementById('close-banner-btn');
+      closeBtn.addEventListener('click', () => {
+        hideInstallBanner();
+        localStorage.setItem('install_banner_dismissed', 'true');
+      });
+    }
+    
+    function hideInstallBanner() {
+      const banner = document.getElementById('install-banner');
+      const container = document.querySelector('.container');
+      
+      banner.style.display = 'none';
+      container.classList.remove('with-banner');
+    }
     
     window.addEventListener('beforeinstallprompt', (e) => {
       e.preventDefault();
       deferredPrompt = e;
       
+      // Show banner after a short delay
+      setTimeout(() => {
+        checkInstallBanner();
+      }, 2000);
+      
+      // Original install button (fallback)
       const installBtn = document.getElementById('install-btn');
       installBtn.style.display = 'block';
       
@@ -3154,6 +3474,7 @@
         
         if (outcome === 'accepted') {
           installBtn.style.display = 'none';
+          hideInstallBanner();
         }
         
         deferredPrompt = null;
@@ -3162,6 +3483,23 @@
     
     window.addEventListener('appinstalled', () => {
       document.getElementById('install-btn').style.display = 'none';
+      hideInstallBanner();
+      localStorage.setItem('app_installed', 'true');
+    });
+    
+    // Check if app is already installed
+    window.addEventListener('DOMContentLoaded', () => {
+      const isInstalled = window.matchMedia('(display-mode: standalone)').matches || 
+                         window.navigator.standalone ||
+                         localStorage.getItem('app_installed');
+      
+      if (isInstalled) {
+        hideInstallBanner();
+        document.getElementById('install-btn').style.display = 'none';
+      }
+      
+      // Initialize game after checking install status
+      initGame();
     });
     
     // Initialize game
@@ -3175,7 +3513,7 @@
     }
     
     // Start the game when page loads
-    document.addEventListener('DOMContentLoaded', initGame);
+    // Note: initGame is called in DOMContentLoaded above
     
     // Make functions available globally for onclick handlers
     window.resetCurrentGame = resetCurrentGame;
@@ -3186,6 +3524,7 @@
     window.setGameMode = setGameMode;
     window.showTab = showTab;
     window.resetPersonalStats = resetPersonalStats;
+    window.showAboutPage = showAboutPage;
   </script>
   
   <!-- Simple PWA Manifest inline -->
