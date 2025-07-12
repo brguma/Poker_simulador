@@ -1252,15 +1252,15 @@
     }
     
     function calculateAdvancedProbability(playerCards, communityCards, opponents) {
-      // Use official Texas Hold'em probability calculations
+      // Use professional blocker and outs analysis
       if (gameState.phase === 'preflop') {
-        return calculatePreflopEquity(playerCards, opponents);
+        return calculatePreflopEquityWithBlockers(playerCards, opponents);
       } else {
-        return calculatePostflopEquity(playerCards, communityCards, opponents);
+        return calculatePostflopWithSimulation(playerCards, communityCards, opponents);
       }
     }
     
-    function calculatePreflopEquity(playerCards, opponents) {
+    function calculatePreflopEquityWithBlockers(playerCards, opponents) {
       const card1 = getCardValue(playerCards[0].value);
       const card2 = getCardValue(playerCards[1].value);
       const suit1 = playerCards[0].suit;
@@ -1270,14 +1270,13 @@
       const isSuited = suit1 === suit2;
       const highCard = Math.max(card1, card2);
       const lowCard = Math.min(card1, card2);
-      const gap = highCard - lowCard;
       
       let baseEquity = 0;
       
-      // Pocket pairs
+      // Base equity from preflop charts
       if (isPair) {
         if (card1 >= 14) baseEquity = 0.85;      // AA
-        else if (card1 >= 13) baseEquity = 0.82;  // KK
+        else if (card1 >= 13) baseEquity = 0.82;  // KK  
         else if (card1 >= 12) baseEquity = 0.80;  // QQ
         else if (card1 >= 11) baseEquity = 0.78;  // JJ
         else if (card1 >= 10) baseEquity = 0.75;  // TT
@@ -1290,7 +1289,6 @@
         else if (card1 >= 3) baseEquity = 0.54;   // 33
         else baseEquity = 0.51;                   // 22
       }
-      // High cards
       else if (highCard >= 14 && lowCard >= 13) {
         baseEquity = isSuited ? 0.65 : 0.60;     // AK
       }
@@ -1321,308 +1319,499 @@
       else if (highCard >= 11 && lowCard >= 10) {
         baseEquity = isSuited ? 0.46 : 0.41;     // JT
       }
-      // Medium cards
       else if (highCard >= 14) {
-        // Ace with low card
-        if (isSuited) baseEquity = Math.max(0.35, 0.45 - (gap * 0.02));
-        else baseEquity = Math.max(0.30, 0.40 - (gap * 0.02));
+        if (isSuited) baseEquity = Math.max(0.35, 0.45 - ((highCard - lowCard) * 0.02));
+        else baseEquity = Math.max(0.30, 0.40 - ((highCard - lowCard) * 0.02));
       }
       else if (highCard >= 13) {
-        // King with low card
-        if (isSuited) baseEquity = Math.max(0.30, 0.40 - (gap * 0.03));
-        else baseEquity = Math.max(0.25, 0.35 - (gap * 0.03));
+        if (isSuited) baseEquity = Math.max(0.30, 0.40 - ((highCard - lowCard) * 0.03));
+        else baseEquity = Math.max(0.25, 0.35 - ((highCard - lowCard) * 0.03));
       }
       else if (highCard >= 11) {
-        // Queen/Jack with low card
-        if (isSuited) baseEquity = Math.max(0.25, 0.35 - (gap * 0.03));
-        else baseEquity = Math.max(0.20, 0.30 - (gap * 0.03));
+        if (isSuited) baseEquity = Math.max(0.25, 0.35 - ((highCard - lowCard) * 0.03));
+        else baseEquity = Math.max(0.20, 0.30 - ((highCard - lowCard) * 0.03));
       }
-      // Connected cards
-      else if (gap <= 1 && highCard >= 9) {
-        baseEquity = isSuited ? 0.35 : 0.28;     // Connected suited/offsuit
+      else if ((highCard - lowCard) <= 1 && highCard >= 9) {
+        baseEquity = isSuited ? 0.35 : 0.28;
       }
-      else if (gap <= 2 && highCard >= 10 && isSuited) {
-        baseEquity = 0.30;                        // Suited connectors with gap
+      else if ((highCard - lowCard) <= 2 && highCard >= 10 && isSuited) {
+        baseEquity = 0.30;
       }
-      // Low cards
       else {
-        if (isSuited) baseEquity = Math.max(0.15, 0.25 - (gap * 0.02));
-        else baseEquity = Math.max(0.10, 0.20 - (gap * 0.02));
+        if (isSuited) baseEquity = Math.max(0.15, 0.25 - ((highCard - lowCard) * 0.02));
+        else baseEquity = Math.max(0.10, 0.20 - ((highCard - lowCard) * 0.02));
       }
       
-      // Adjust for number of opponents (official tournament data)
+      // Blocker adjustments for preflop
+      let blockerBonus = 0;
+      
+      // Ace blocker reduces opponent AA/AK combos
+      const hasAce = playerCards.some(c => getCardValue(c.value) === 14);
+      if (hasAce) {
+        blockerBonus += 0.02; // Slightly better against random range
+      }
+      
+      // King blocker reduces opponent KK/AK combos  
+      const hasKing = playerCards.some(c => getCardValue(c.value) === 13);
+      if (hasKing && !hasAce) {
+        blockerBonus += 0.015;
+      }
+      
+      // Suited cards block opponent flush potential
+      if (isSuited) {
+        blockerBonus += 0.01;
+      }
+      
+      baseEquity += blockerBonus;
+      
+      // Opponent adjustment
       const opponentAdjustment = {
-        1: 1.0,
-        2: 0.85,
-        3: 0.75,
-        4: 0.68,
-        5: 0.62,
-        6: 0.57,
-        7: 0.53,
-        8: 0.49,
-        9: 0.46
+        1: 1.0, 2: 0.85, 3: 0.75, 4: 0.68, 5: 0.62,
+        6: 0.57, 7: 0.53, 8: 0.49, 9: 0.46
       };
       
       const adjustment = opponentAdjustment[Math.min(opponents, 9)] || 0.40;
       return Math.max(0.05, Math.min(0.95, baseEquity * adjustment));
     }
     
-    function calculatePostflopEquity(playerCards, communityCards, opponents) {
-      const playerHand = evaluateHand(playerCards, communityCards);
-      const allCards = [...playerCards, ...communityCards];
+    function calculatePostflopWithSimulation(playerCards, communityCards, opponents) {
+      // Get all known cards
+      const knownCards = [...playerCards, ...communityCards];
+      const remainingDeck = getRemainingDeck(knownCards);
       
-      // Calculate outs for improvement
-      const outs = calculateOuts(playerCards, communityCards);
+      // Calculate current hand strength
+      const currentHand = evaluateHand(playerCards, communityCards);
       
-      // Check for dangerous board textures
-      const boardThreats = analyzeBoardThreats(communityCards);
+      // Calculate outs and blockers
+      const outsAnalysis = calculateOutsWithBlockers(playerCards, communityCards, remainingDeck);
+      const blockerAnalysis = calculateBlockers(playerCards, communityCards);
       
-      let baseEquity = 0;
-      
-      // Made hands with dynamic equity based on board texture
-      if (playerHand.rank >= 8) {
-        baseEquity = 0.95; // Quads, Straight flush, Royal flush
+      // Simulate remaining cards if not river
+      if (gameState.phase === 'river') {
+        // River: calculate exact equity vs random opponent hands
+        return calculateRiverEquity(playerCards, communityCards, opponents, blockerAnalysis);
+      } else {
+        // Pre-river: simulate all possible runouts
+        return simulateRunouts(playerCards, communityCards, remainingDeck, opponents, outsAnalysis, blockerAnalysis);
       }
-      else if (playerHand.rank === 7) {
-        // Full house - check if board is paired
-        baseEquity = boardThreats.pairedBoard ? 0.88 : 0.92;
-      }
-      else if (playerHand.rank === 6) {
-        // Flush - very strong unless board is paired (full house possible)
-        baseEquity = boardThreats.pairedBoard ? 0.75 : 0.85;
-      }
-      else if (playerHand.rank === 5) {
-        // Straight - vulnerable to flushes and full houses
-        let straightEquity = 0.76;
-        if (boardThreats.flushPossible) straightEquity -= 0.15;
-        if (boardThreats.pairedBoard) straightEquity -= 0.10;
-        baseEquity = straightEquity;
-      }
-      else if (playerHand.rank === 4) {
-        // Three of a kind - strong but vulnerable
-        let tripsEquity = 0.68;
-        if (boardThreats.flushPossible) tripsEquity -= 0.08;
-        if (boardThreats.straightPossible) tripsEquity -= 0.05;
-        if (boardThreats.higherStraightPossible) tripsEquity -= 0.08;
-        baseEquity = tripsEquity;
-      }
-      else if (playerHand.rank === 3) {
-        // Two pair - decent but vulnerable
-        let twoPairEquity = 0.58;
-        if (boardThreats.flushPossible) twoPairEquity -= 0.12;
-        if (boardThreats.straightPossible) twoPairEquity -= 0.08;
-        baseEquity = twoPairEquity;
-      }
-      else if (playerHand.rank === 2) {
-        // One pair - strength depends on pair value and board
-        const pairValue = getPairValue(playerCards, communityCards);
-        let pairEquity = 0;
-        
-        if (pairValue >= 11) pairEquity = 0.52; // High pair
-        else if (pairValue >= 8) pairEquity = 0.45;  // Medium pair
-        else pairEquity = 0.38; // Low pair
-        
-        // Adjust for board threats
-        if (boardThreats.flushPossible) pairEquity -= 0.15;
-        if (boardThreats.straightPossible) pairEquity -= 0.10;
-        if (boardThreats.overcardsOnBoard > 0) pairEquity -= (boardThreats.overcardsOnBoard * 0.05);
-        
-        baseEquity = Math.max(0.15, pairEquity);
-      }
-      else {
-        // High card - very weak, mostly drawing
-        baseEquity = 0.25;
-        if (boardThreats.flushPossible || boardThreats.straightPossible) {
-          baseEquity = 0.15;
-        }
-      }
-      
-      // Add equity from draws (more conservative calculation)
-      let drawEquity = 0;
-      if (outs.total > 0 && playerHand.rank <= 2) {
-        if (gameState.phase === 'flop') {
-          // Two cards to come: ~4% per out, but discount for opponent interference
-          drawEquity = (outs.total * 3.8) / 100;
-        } else if (gameState.phase === 'turn') {
-          // One card to come: ~2% per out
-          drawEquity = (outs.total * 2.1) / 100;
-        }
-        
-        // For drawing hands, use draw equity if higher than made hand equity
-        if (playerHand.rank === 1) {
-          baseEquity = Math.max(baseEquity, drawEquity * 0.8);
-        }
-      }
-      
-      // Opponent adjustment gets stronger with more dangerous boards
-      let opponentPenalty = Math.pow(0.88, opponents - 1);
-      
-      // Extra penalty for dangerous boards with many opponents
-      if (opponents > 4) {
-        if (boardThreats.flushPossible || boardThreats.straightPossible) {
-          opponentPenalty *= 0.9;
-        }
-        if (boardThreats.pairedBoard) {
-          opponentPenalty *= 0.95;
-        }
-      }
-      
-      return Math.max(0.05, Math.min(0.95, baseEquity * opponentPenalty));
     }
     
-    function analyzeBoardThreats(communityCards) {
-      if (communityCards.length < 3) {
-        return {
-          flushPossible: false,
-          straightPossible: false,
-          pairedBoard: false,
-          overcardsOnBoard: 0,
-          higherStraightPossible: false
-        };
-      }
-      
-      const suits = communityCards.map(c => c.suit);
-      const values = communityCards.map(c => getCardValue(c.value)).sort((a, b) => a - b);
-      
-      // Count suits for flush possibility
-      const suitCounts = {};
-      suits.forEach(suit => suitCounts[suit] = (suitCounts[suit] || 0) + 1);
-      const maxSuitCount = Math.max(...Object.values(suitCounts));
-      const flushPossible = maxSuitCount >= 3;
-      
-      // Check for pairs on board
-      const valueCounts = {};
-      values.forEach(value => valueCounts[value] = (valueCounts[value] || 0) + 1);
-      const pairedBoard = Object.values(valueCounts).some(count => count >= 2);
-      
-      // Check for straight possibilities
-      const uniqueValues = [...new Set(values)];
-      let straightPossible = false;
-      let higherStraightPossible = false;
-      
-      if (uniqueValues.length >= 3) {
-        // Check for any 3+ card sequences
-        for (let i = 0; i <= uniqueValues.length - 3; i++) {
-          const sequence = uniqueValues.slice(i, i + 3);
-          const isConsecutive = sequence.every((val, idx) => 
-            idx === 0 || val === sequence[idx - 1] + 1
-          );
-          if (isConsecutive) {
-            straightPossible = true;
-            // Check if there are higher straight possibilities
-            if (sequence[2] >= 10) higherStraightPossible = true;
-          }
-        }
-        
-        // Check for gapped sequences (like 7-9-J)
-        if (!straightPossible) {
-          for (let i = 0; i < uniqueValues.length - 1; i++) {
-            if (uniqueValues[i + 1] - uniqueValues[i] <= 4) {
-              straightPossible = true;
-              break;
-            }
-          }
+    function getRemainingDeck(usedCards) {
+      const fullDeck = [];
+      for (let suit of suits) {
+        for (let value of values) {
+          fullDeck.push({ value, suit });
         }
       }
       
-      // Count overcards (cards Jack or higher)
-      const overcardsOnBoard = values.filter(v => v >= 11).length;
-      
-      return {
-        flushPossible,
-        straightPossible,
-        pairedBoard,
-        overcardsOnBoard,
-        higherStraightPossible
-      };
+      return fullDeck.filter(card => 
+        !usedCards.some(used => used.value === card.value && used.suit === card.suit)
+      );
     }
     
-    function calculateOuts(playerCards, communityCards) {
+    function calculateOutsWithBlockers(playerCards, communityCards, remainingDeck) {
       const allCards = [...playerCards, ...communityCards];
-      const playerSuits = playerCards.map(c => c.suit);
       const playerValues = playerCards.map(c => getCardValue(c.value));
-      const allSuits = allCards.map(c => c.suit);
-      const allValues = allCards.map(c => getCardValue(c.value));
+      const playerSuits = playerCards.map(c => c.suit);
       
       let flushOuts = 0;
       let straightOuts = 0;
       let pairOuts = 0;
-      let tripOuts = 0;
+      let twoPairOuts = 0;
+      let tripsOuts = 0;
+      let fullHouseOuts = 0;
       
-      // Flush outs
+      // Flush outs calculation with blockers
+      const allSuits = allCards.map(c => c.suit);
       const suitCounts = {};
       allSuits.forEach(suit => suitCounts[suit] = (suitCounts[suit] || 0) + 1);
+      
       Object.entries(suitCounts).forEach(([suit, count]) => {
         if (count === 4 && playerSuits.includes(suit)) {
-          flushOuts = 9; // 13 - 4 = 9 remaining of that suit
+          // Count remaining cards of this suit in deck
+          flushOuts = remainingDeck.filter(card => card.suit === suit).length;
         }
       });
       
-      // Straight outs (simplified)
-      const uniqueValues = [...new Set(allValues)].sort((a, b) => a - b);
+      // Straight outs calculation
+      const allValues = allCards.map(c => getCardValue(c.value)).sort((a, b) => a - b);
+      const uniqueValues = [...new Set(allValues)];
       
-      // Check for open-ended straight draw
-      if (uniqueValues.length >= 4) {
-        for (let i = 0; i <= uniqueValues.length - 4; i++) {
-          const sequence = uniqueValues.slice(i, i + 4);
-          const isConsecutive = sequence.every((val, idx) => 
-            idx === 0 || val === sequence[idx - 1] + 1
-          );
-          
-          if (isConsecutive) {
-            // Check if player cards contribute to this straight
-            const playerContributes = playerValues.some(pv => sequence.includes(pv));
-            if (playerContributes) {
-              straightOuts = Math.max(straightOuts, 8); // Open-ended
-            }
+      // Check for open-ended straight draws
+      for (let i = 0; i <= uniqueValues.length - 4; i++) {
+        const sequence = uniqueValues.slice(i, i + 4);
+        const isConsecutive = sequence.every((val, idx) => 
+          idx === 0 || val === sequence[idx - 1] + 1
+        );
+        
+        if (isConsecutive) {
+          const playerContributes = playerValues.some(pv => sequence.includes(pv));
+          if (playerContributes) {
+            // Count available cards for straight completion
+            const lowEnd = sequence[0] - 1;
+            const highEnd = sequence[3] + 1;
+            
+            const lowCards = remainingDeck.filter(c => getCardValue(c.value) === lowEnd).length;
+            const highCards = remainingDeck.filter(c => getCardValue(c.value) === highEnd).length;
+            
+            straightOuts = Math.max(straightOuts, lowCards + highCards);
           }
         }
       }
       
-      // Inside straight draw (gutshot)
+      // Inside straight (gutshot) calculation
       if (straightOuts === 0 && uniqueValues.length >= 3) {
-        // Simplified gutshot detection
-        const playerContributes = playerValues.some(pv => uniqueValues.includes(pv));
-        if (playerContributes) {
-          straightOuts = 4; // Inside straight
+        for (let i = 0; i < uniqueValues.length - 2; i++) {
+          const gap = uniqueValues[i + 2] - uniqueValues[i];
+          if (gap === 4) { // One card missing in the middle
+            const missingValue = uniqueValues[i] + 2;
+            const availableCards = remainingDeck.filter(c => getCardValue(c.value) === missingValue).length;
+            straightOuts = Math.max(straightOuts, availableCards);
+          }
         }
       }
       
-      // Pair outs (if no pair yet)
-      const playerHand = evaluateHand(playerCards, communityCards);
-      if (playerHand.rank === 1) { // High card only
-        pairOuts = playerValues.length * 3; // 3 more of each player card value
-        
-        // Subtract any that are already on board
+      // Pair, two pair, trips outs
+      const currentHand = evaluateHand(playerCards, communityCards);
+      
+      if (currentHand.rank === 1) { // High card
+        // Outs to make a pair
         playerValues.forEach(pv => {
-          const countOnBoard = allValues.filter(av => av === pv).length;
-          pairOuts -= Math.max(0, countOnBoard - 1);
+          const availableCards = remainingDeck.filter(c => getCardValue(c.value) === pv).length;
+          pairOuts += availableCards;
         });
-        pairOuts = Math.max(0, pairOuts);
       }
       
-      // Two pair/trips outs (if one pair)
-      if (playerHand.rank === 2) { // One pair
-        tripOuts = 2; // Two more of the paired card
+      if (currentHand.rank === 2) { // One pair
+        // Outs to two pair or trips
+        const pairValue = getPairValue(playerCards, communityCards);
         
-        // Outs for second pair
-        const unpairedPlayerCards = playerValues.filter(pv => {
-          const boardCount = communityCards.filter(cc => getCardValue(cc.value) === pv).length;
-          const playerCount = playerValues.filter(ppv => ppv === pv).length;
-          return playerCount + boardCount === 1; // Unpaired
+        // Trips outs
+        tripsOuts = remainingDeck.filter(c => getCardValue(c.value) === pairValue).length;
+        
+        // Two pair outs
+        const unpairedValues = playerValues.filter(pv => pv !== pairValue);
+        unpairedValues.forEach(uv => {
+          const availableCards = remainingDeck.filter(c => getCardValue(c.value) === uv).length;
+          twoPairOuts += availableCards;
+        });
+      }
+      
+      if (currentHand.rank === 3) { // Two pair
+        // Outs to full house
+        const boardValues = communityCards.map(c => getCardValue(c.value));
+        const valueCounts = {};
+        [...playerValues, ...boardValues].forEach(v => {
+          valueCounts[v] = (valueCounts[v] || 0) + 1;
         });
         
-        pairOuts = unpairedPlayerCards.length * 3;
+        Object.entries(valueCounts).forEach(([value, count]) => {
+          if (count === 2) {
+            const availableCards = remainingDeck.filter(c => getCardValue(c.value) === parseInt(value)).length;
+            fullHouseOuts += availableCards;
+          }
+        });
       }
+      
+      if (currentHand.rank === 4) { // Trips
+        // Outs to full house or quads
+        const tripsValue = getTripValue(playerCards, communityCards);
+        
+        // Quads out
+        const quadsOuts = remainingDeck.filter(c => getCardValue(c.value) === tripsValue).length;
+        
+        // Full house outs (pair any other card)
+        const otherValues = [...new Set([...playerValues, ...communityCards.map(c => getCardValue(c.value))])];
+        otherValues.forEach(ov => {
+          if (ov !== tripsValue) {
+            const availableCards = remainingDeck.filter(c => getCardValue(c.value) === ov).length;
+            if (availableCards >= 2) {
+              fullHouseOuts += availableCards;
+            }
+          }
+        });
+        
+        fullHouseOuts += quadsOuts;
+      }
+      
+      // Remove overlapping outs (e.g., card that makes flush AND pair)
+      const totalCleanOuts = Math.min(47, flushOuts + straightOuts + pairOuts + twoPairOuts + tripsOuts + fullHouseOuts);
       
       return {
         flush: flushOuts,
         straight: straightOuts,
         pair: pairOuts,
-        trips: tripOuts,
-        total: flushOuts + straightOuts + pairOuts + tripOuts
+        twoPair: twoPairOuts,
+        trips: tripsOuts,
+        fullHouse: fullHouseOuts,
+        total: totalCleanOuts
       };
     }
+    
+    function calculateBlockers(playerCards, communityCards) {
+      const blockers = {
+        flushBlockers: {},
+        straightBlockers: 0,
+        pairBlockers: {},
+        premiumBlockers: 0
+      };
+      
+      // Flush blockers
+      playerCards.forEach(card => {
+        const suit = card.suit;
+        blockers.flushBlockers[suit] = (blockers.flushBlockers[suit] || 0) + 1;
+      });
+      
+      // Premium card blockers (reduces opponent strong hands)
+      playerCards.forEach(card => {
+        const value = getCardValue(card.value);
+        if (value >= 11) { // J, Q, K, A
+          blockers.premiumBlockers++;
+        }
+      });
+      
+      // Pair blockers
+      playerCards.forEach(card => {
+        const value = getCardValue(card.value);
+        blockers.pairBlockers[value] = (blockers.pairBlockers[value] || 0) + 1;
+      });
+      
+      return blockers;
+    }
+    
+    function calculateRiverEquity(playerCards, communityCards, opponents, blockers) {
+      const playerHand = evaluateHand(playerCards, communityCards);
+      const remainingDeck = getRemainingDeck([...playerCards, ...communityCards]);
+      
+      // Sample opponent hands and count wins
+      let wins = 0;
+      let totalSimulations = 1000; // Sample size for performance
+      
+      for (let sim = 0; sim < totalSimulations; sim++) {
+        let playerWins = true;
+        
+        for (let opp = 0; opp < opponents; opp++) {
+          // Deal random opponent hand
+          const oppCards = shuffle(remainingDeck).slice(0, 2);
+          const oppHand = evaluateHand(oppCards, communityCards);
+          
+          // Apply blocker adjustments (lower probability of premium hands)
+          let oppHandAdjusted = oppHand;
+          if (blockers.premiumBlockers > 0 && oppHand.rank >= 6) {
+            oppHandAdjusted.score *= 0.95; // Slightly reduce opponent premium hands
+          }
+          
+          if (compareHands(oppHandAdjusted, playerHand) > 0) {
+            playerWins = false;
+            break;
+          }
+        }
+        
+        if (playerWins) wins++;
+      }
+      
+      return Math.max(0.05, Math.min(0.95, wins / totalSimulations));
+    }
+    
+    function simulateRunouts(playerCards, communityCards, remainingDeck, opponents, outs, blockers) {
+      const cardsToComplete = gameState.phase === 'flop' ? 2 : 1;
+      let totalWins = 0;
+      let totalSimulations = 500; // Performance balance
+      
+      for (let sim = 0; sim < totalSimulations; sim++) {
+        const shuffledDeck = shuffle([...remainingDeck]);
+        const runout = shuffledDeck.slice(0, cardsToComplete);
+        const finalBoard = [...communityCards, ...runout];
+        
+        const finalPlayerHand = evaluateHand(playerCards, finalBoard);
+        
+        // Check if player wins against random opponents
+        let playerWins = true;
+        const usedCards = [...playerCards, ...finalBoard];
+        const oppDeck = shuffledDeck.slice(cardsToComplete);
+        
+        for (let opp = 0; opp < opponents; opp++) {
+          const oppCards = oppDeck.slice(opp * 2, (opp * 2) + 2);
+          if (oppCards.length < 2) break;
+          
+          const oppHand = evaluateHand(oppCards, finalBoard);
+          
+          if (compareHands(oppHand, finalPlayerHand) > 0) {
+            playerWins = false;
+            break;
+          }
+        }
+        
+        if (playerWins) totalWins++;
+      }
+      
+      return Math.max(0.05, Math.min(0.95, totalWins / totalSimulations));
+    }
+    
+    function compareHands(hand1, hand2) {
+      if (hand1.rank !== hand2.rank) {
+        return hand1.rank - hand2.rank;
+      }
+      return hand1.score - hand2.score;
+    }
+    
+    function analyzePreflopBlockers() {
+      const card1 = getCardValue(gameState.playerCards[0].value);
+      const card2 = getCardValue(gameState.playerCards[1].value);
+      const suit1 = gameState.playerCards[0].suit;
+      const suit2 = gameState.playerCards[1].suit;
+      
+      let blockerText = '';
+      
+      // Ace blocker
+      const hasAce = card1 === 14 || card2 === 14;
+      if (hasAce) {
+        blockerText += '<div style="margin-left: 30px; color: #f59e0b;">• Ás bloqueado: Reduz combos de AA, AK, AQ dos oponentes</div>';
+      }
+      
+      // King blocker
+      const hasKing = card1 === 13 || card2 === 13;
+      if (hasKing && !hasAce) {
+        blockerText += '<div style="margin-left: 30px; color: #f59e0b;">• Rei bloqueado: Reduz combos de KK, KQ, AK dos oponentes</div>';
+      }
+      
+      // Pocket pair blockers
+      const isPair = card1 === card2;
+      if (isPair) {
+        const cardName = getCardName(card1);
+        blockerText += `<div style="margin-left: 30px; color: #f59e0b;">• Par de ${cardName}s: Reduz sets de ${cardName} dos oponentes</div>`;
+      }
+      
+      // Suited blockers
+      const isSuited = suit1 === suit2;
+      if (isSuited) {
+        blockerText += `<div style="margin-left: 30px; color: #f59e0b;">• 2 cartas de ${suit1}: Reduz flush draws de ${suit1} dos oponentes</div>`;
+      }
+      
+      // High cards blocker
+      const premiumCards = [card1, card2].filter(c => c >= 11).length;
+      if (premiumCards > 0 && !hasAce && !hasKing) {
+        blockerText += `<div style="margin-left: 30px; color: #f59e0b;">• ${premiumCards} carta(s) premium: Reduz mãos fortes dos oponentes</div>`;
+      }
+      
+      if (blockerText === '') {
+        blockerText = '<div style="margin-left: 30px; color: #9ca3af;">• Sem blockers significativos</div>';
+      }
+      
+      return blockerText;
+    }
+    
+    function getCardName(value) {
+      const names = {
+        14: 'Ás', 13: 'Rei', 12: 'Dama', 11: 'Valete', 10: 'Dez',
+        9: 'Nove', 8: 'Oito', 7: 'Sete', 6: 'Seis', 5: 'Cinco',
+        4: 'Quatro', 3: 'Três', 2: 'Dois'
+      };
+      return names[value] || value.toString();
+    }
+    
+    function getExpertRecommendation(equity, phase) {
+      let recommendation = '';
+      const equityPercent = Math.round(equity * 100);
+      
+      if (phase === 'preflop') {
+        if (equityPercent >= 70) {
+          recommendation = '<div style="margin-left: 30px; color: #16a34a;">• <strong>Raise/3-bet agressivo</strong> - Mão premium</div>';
+          recommendation += '<div style="margin-left: 30px; color: #16a34a;">• Build o pot, você está na frente contra a maioria dos ranges</div>';
+        } else if (equityPercent >= 55) {
+          recommendation = '<div style="margin-left: 30px; color: #f59e0b;">• <strong>Raise para value</strong> - Mão sólida</div>';
+          recommendation += '<div style="margin-left: 30px; color: #f59e0b;">• Boa para open-raise na maioria das posições</div>';
+        } else if (equityPercent >= 45) {
+          recommendation = '<div style="margin-left: 30px; color: #3b82f6;">• <strong>Call ou fold</strong> dependendo da posição</div>';
+          recommendation += '<div style="margin-left: 30px; color: #3b82f6;">• Playable em posição, fold early position vs raise</div>';
+        } else if (equityPercent >= 30) {
+          recommendation = '<div style="margin-left: 30px; color: #dc2626;">• <strong>Fold na maioria das situações</strong></div>';
+          recommendation += '<div style="margin-left: 30px; color: #dc2626;">• Só jogue com odds implícitas muito boas</div>';
+        } else {
+          recommendation = '<div style="margin-left: 30px; color: #dc2626;">• <strong>Fold imediato</strong> - Mão muito fraca</div>';
+          recommendation += '<div style="margin-left: 30px; color: #dc2626;">• Não tem equity suficiente para ser lucrativa</div>';
+        }
+      } else {
+        // Post-flop recommendations
+        if (equityPercent >= 80) {
+          recommendation = '<div style="margin-left: 30px; color: #16a34a;">• <strong>Bet/raise for value</strong> - Mão monstro</div>';
+          recommendation += '<div style="margin-left: 30px; color: #16a34a;">• Build o pot ao máximo, você está dominando</div>';
+        } else if (equityPercent >= 65) {
+          recommendation = '<div style="margin-left: 30px; color: #16a34a;">• <strong>Bet for value</strong> - Mão forte</div>';
+          recommendation += '<div style="margin-left: 30px; color: #16a34a;">• Continue apostando para extrair valor</div>';
+        } else if (equityPercent >= 50) {
+          recommendation = '<div style="margin-left: 30px; color: #f59e0b;">• <strong>Bet or check-call</strong> - Ligeiramente na frente</div>';
+          recommendation += '<div style="margin-left: 30px; color: #f59e0b;">• Pode apostar thin value ou controlar o pot</div>';
+        } else if (equityPercent >= 35) {
+          recommendation = '<div style="margin-left: 30px; color: #3b82f6;">• <strong>Check-call ou fold</strong> - Equity marginal</div>';
+          recommendation += '<div style="margin-left: 30px; color: #3b82f6;">• Depende dos outs e pot odds</div>';
+        } else {
+          recommendation = '<div style="margin-left: 30px; color: #dc2626;">• <strong>Check-fold</strong> - Equity baixa</div>';
+          recommendation += '<div style="margin-left: 30px; color: #dc2626;">• Só continue com pot odds muito favoráveis</div>';
+        }
+      }
+      
+      return recommendation;
+    }
+    
+    function getOpponentImpactDescription(opponents) {
+      let impactText = '';
+      
+      if (opponents === 1) {
+        impactText = '<div style="margin-left: 30px; color: #16a34a;">• Heads-up: Sua equity é maximizada</div>';
+        impactText += '<div style="margin-left: 30px;">• Qualquer par ou carta alta pode ser suficiente</div>';
+      } else if (opponents === 2) {
+        impactText = '<div style="margin-left: 30px; color: #f59e0b;">• 3-way: Ainda boa situação</div>';
+        impactText += '<div style="margin-left: 30px;">• Mãos médias ainda têm valor</div>';
+      } else if (opponents <= 4) {
+        impactText = '<div style="margin-left: 30px; color: #f59e0b;">• Mesa média: Equity reduzida moderadamente</div>';
+        impactText += '<div style="margin-left: 30px;">• Precisa de mãos mais fortes para value bet</div>';
+      } else if (opponents <= 6) {
+        impactText = '<div style="margin-left: 30px; color: #dc2626;">• Mesa cheia: Equity significativamente reduzida</div>';
+        impactText += '<div style="margin-left: 30px;">• Seja mais seletivo com suas jogadas</div>';
+      } else {
+        impactText = '<div style="margin-left: 30px; color: #dc2626;">• Mesa muito cheia: Equity drasticamente reduzida</div>';
+        impactText += '<div style="margin-left: 30px;">• Jogue apenas mãos premium</div>';
+      }
+      
+      // Add reduction percentage
+      const reductionPercent = Math.round((1 - getOpponentReduction(opponents)) * 100);
+      if (reductionPercent > 0) {
+        impactText += `<div style="margin-left: 30px; color: #9ca3af;">• Redução de equity: ~${reductionPercent}% vs heads-up</div>`;
+      }
+      
+      return impactText;
+    }
+    
+    function getOpponentReduction(opponents) {
+      const reductions = {
+        1: 1.0, 2: 0.85, 3: 0.75, 4: 0.68, 5: 0.62,
+        6: 0.57, 7: 0.53, 8: 0.49, 9: 0.46
+      };
+      return reductions[Math.min(opponents, 9)] || 0.40;
+    }
+
+    function getTripValue(playerCards, communityCards) {
+      const allCards = [...playerCards, ...communityCards];
+      const valueCounts = {};
+      
+      allCards.forEach(card => {
+        const value = getCardValue(card.value);
+        valueCounts[value] = (valueCounts[value] || 0) + 1;
+      });
+      
+      for (let value = 14; value >= 2; value--) {
+        if (valueCounts[value] >= 3) {
+          return value;
+        }
+      }
+      
+      return 0;
+    }
+    
+
+    
+
     
     function getPairValue(playerCards, communityCards) {
       const allCards = [...playerCards, ...communityCards];
@@ -2294,42 +2483,83 @@
         }
       }
       
-      // Outs analysis (only post-flop)
-      if (gameState.communityCards.length >= 3) {
-        const outs = calculateOuts(gameState.playerCards, gameState.communityCards);
-        if (outs.total > 0) {
-          explanation += '<div style="margin: 15px 0 8px 0;"><strong>🎯 Análise de Outs (Oficial):</strong></div>';
-          
-          if (outs.flush > 0) {
-            explanation += `<div style="margin-left: 15px; color: #3b82f6;">• Flush outs: ${outs.flush} cartas</div>`;
+      // Calculation breakdown with professional structure
+      explanation += '<div style="margin: 15px 0 8px 0;"><strong>🔬 Análise Profissional:</strong></div>';
+      
+      // 1. Blockers Analysis
+      if (gameState.phase === 'preflop') {
+        const blockerAnalysis = analyzePreflopBlockers();
+        explanation += '<div style="margin-left: 15px; margin-bottom: 8px;"><strong>🛡️ Blockers:</strong></div>';
+        explanation += blockerAnalysis;
+      } else {
+        const blockerAnalysis = calculateBlockers(gameState.playerCards, gameState.communityCards);
+        explanation += '<div style="margin-left: 15px; margin-bottom: 8px;"><strong>🛡️ Blockers:</strong></div>';
+        
+        if (blockerAnalysis.premiumBlockers > 0) {
+          explanation += `<div style="margin-left: 30px; color: #f59e0b;">• ${blockerAnalysis.premiumBlockers} cartas premium bloqueadas (J+)</div>`;
+        }
+        
+        Object.entries(blockerAnalysis.flushBlockers).forEach(([suit, count]) => {
+          if (count > 0) {
+            explanation += `<div style="margin-left: 30px; color: #f59e0b;">• ${count} carta(s) de ${suit} bloqueada(s) (reduz flush draws)</div>`;
           }
-          if (outs.straight > 0) {
-            explanation += `<div style="margin-left: 15px; color: #3b82f6;">• Straight outs: ${outs.straight} cartas</div>`;
+        });
+        
+        Object.entries(blockerAnalysis.pairBlockers).forEach(([value, count]) => {
+          if (count > 0) {
+            const cardName = getCardName(parseInt(value));
+            explanation += `<div style="margin-left: 30px; color: #f59e0b;">• ${count} ${cardName}(s) bloqueada(s) (reduz sets/pares)</div>`;
           }
-          if (outs.pair > 0) {
-            explanation += `<div style="margin-left: 15px; color: #3b82f6;">• Pair outs: ${outs.pair} cartas</div>`;
-          }
-          if (outs.trips > 0) {
-            explanation += `<div style="margin-left: 15px; color: #3b82f6;">• Set/trips outs: ${outs.trips} cartas</div>`;
-          }
-          
-          const outsPercent = gameState.phase === 'flop' ? 
-            (outs.total * 4) : (outs.total * 2);
-          explanation += `<div style="margin-left: 15px; color: #f59e0b;">→ Total: ${outs.total} outs = ~${outsPercent}% chance de melhorar</div>`;
+        });
+        
+        if (blockerAnalysis.premiumBlockers === 0 && Object.keys(blockerAnalysis.flushBlockers).length === 0) {
+          explanation += '<div style="margin-left: 30px; color: #9ca3af;">• Sem blockers significativos</div>';
         }
       }
       
-      // Official calculation breakdown
-      explanation += '<div style="margin: 15px 0 8px 0;"><strong>📊 Cálculo Oficial:</strong></div>';
-      if (gameState.phase === 'preflop') {
-        explanation += '<div style="margin-left: 15px;">• Baseado em tabelas oficiais de starting hands</div>';
-        explanation += '<div style="margin-left: 15px;">• Dados de milhões de mãos simuladas</div>';
-      } else {
-        explanation += '<div style="margin-left: 15px;">• Made hand equity + draw equity</div>';
-        explanation += '<div style="margin-left: 15px;">• Fórmula oficial: outs × 4% (flop) ou outs × 2% (turn)</div>';
+      // 2. Outs Analysis (post-flop only)
+      if (gameState.communityCards.length >= 3) {
+        const outsAnalysis = calculateOutsWithBlockers(gameState.playerCards, gameState.communityCards, []);
+        explanation += '<div style="margin-left: 15px; margin-bottom: 8px; margin-top: 10px;"><strong>🎯 Outs Disponíveis:</strong></div>';
+        
+        if (outsAnalysis.total === 0) {
+          explanation += '<div style="margin-left: 30px; color: #9ca3af;">• Nenhum out direto para melhorar</div>';
+        } else {
+          if (outsAnalysis.flush > 0) {
+            explanation += `<div style="margin-left: 30px; color: #3b82f6;">• ${outsAnalysis.flush} outs para flush</div>`;
+          }
+          if (outsAnalysis.straight > 0) {
+            explanation += `<div style="margin-left: 30px; color: #3b82f6;">• ${outsAnalysis.straight} outs para sequência</div>`;
+          }
+          if (outsAnalysis.pair > 0) {
+            explanation += `<div style="margin-left: 30px; color: #3b82f6;">• ${outsAnalysis.pair} outs para par</div>`;
+          }
+          if (outsAnalysis.trips > 0) {
+            explanation += `<div style="margin-left: 30px; color: #3b82f6;">• ${outsAnalysis.trips} outs para trinca/set</div>`;
+          }
+          if (outsAnalysis.fullHouse > 0) {
+            explanation += `<div style="margin-left: 30px; color: #3b82f6;">• ${outsAnalysis.fullHouse} outs para full house</div>`;
+          }
+          
+          explanation += `<div style="margin-left: 30px; color: #16a34a; font-weight: bold;">• Total: ${outsAnalysis.total} outs</div>`;
+        }
       }
-      explanation += `<div style="margin-left: 15px;">• Ajuste por ${gameState.opponents} oponentes</div>`;
-      explanation += `<div style="margin-left: 15px; color: #f59e0b; font-weight: bold;">→ Equity final: ${Math.round(correctProb * 100)}%</div>`;
+      
+      // 3. Expert Recommendation
+      explanation += '<div style="margin-left: 15px; margin-bottom: 8px; margin-top: 10px;"><strong>🧠 Recomendação dos Especialistas:</strong></div>';
+      const expertAdvice = getExpertRecommendation(correctProb, gameState.phase);
+      explanation += expertAdvice;
+      
+      // 4. Opponent Count
+      explanation += '<div style="margin-left: 15px; margin-bottom: 8px; margin-top: 10px;"><strong>👥 Situação da Mesa:</strong></div>';
+      explanation += `<div style="margin-left: 30px;">• Você vs <strong>${gameState.opponents} oponentes</strong></div>`;
+      
+      const opponentImpact = getOpponentImpactDescription(gameState.opponents);
+      explanation += opponentImpact;
+      
+      // 5. Final Equity
+      explanation += '<div style="margin-left: 15px; margin-bottom: 8px; margin-top: 15px;"><strong>🎯 Equity Final:</strong></div>';
+      explanation += `<div style="margin-left: 30px; color: #f59e0b; font-weight: bold; font-size: 16px;">→ ${Math.round(correctProb * 100)}% de chance de vitória</div>`;
       
       return explanation;
     }
@@ -2426,51 +2656,55 @@
       const currentHand = evaluateHand(playerCards, communityCards);
       
       if (currentHand.rank >= 8) {
-        return "Mão monstro formada! Equity disparou!";
+        return "🚀 Mão monstro formada! Equity disparou para o topo!";
       }
       else if (currentHand.rank === 7) {
-        return "Full house! Equity altíssima agora!";
+        return "🏠 Full house! Equity altíssima - quase nuts!";
       }
       else if (currentHand.rank === 6) {
-        return "Flush completado! Mão muito forte!";
+        return "💎 Flush completado! Mão muito forte!";
       }
       else if (currentHand.rank === 5) {
-        return "Sequência formada! Boa mão!";
+        return "➡️ Sequência formada! Boa mão, cuidado com flushes!";
       }
       else if (currentHand.rank === 4) {
         if (isPreflopPair) {
-          return "SET! Mão melhorou drasticamente!";
+          return "🎯 SET! Mão melhorou drasticamente - equity explodiu!";
         } else {
-          return "Trinca formada! Equity aumentou muito!";
+          return "⭐ Trinca formada! Equity aumentou muito!";
         }
       }
       else if (currentHand.rank === 3) {
-        return "Dois pares! Mão melhorou significativamente!";
+        return "👥 Dois pares! Mão melhorou significativamente!";
       }
       else if (currentHand.rank === 2) {
         if (!isPreflopPair) {
-          return "Par formado! Melhorou do high card!";
+          return "📈 Par formado! Melhorou bastante do high card!";
         } else {
-          return "Manteve o par, mas equity pode ter mudado pelo board";
+          return "⚖️ Manteve o par, mas equity mudou pelo board texture";
         }
       }
       
-      // Check for draws
-      const outs = calculateOuts(playerCards, communityCards);
-      if (outs.total > 4) {
-        return `Muitos draws! ${outs.total} outs para melhorar`;
+      // Check for draws using new system
+      const remainingDeck = getRemainingDeck([...playerCards, ...communityCards]);
+      const outs = calculateOutsWithBlockers(playerCards, communityCards, remainingDeck);
+      const blockers = calculateBlockers(playerCards, communityCards);
+      
+      if (outs.total > 8) {
+        return `🌟 Muitos draws! ${outs.total} outs + blockers = equity boa`;
+      } else if (outs.total > 4) {
+        return `🎨 Alguns draws disponíveis: ${outs.total} outs para melhorar`;
       }
       
-      return "Board não ajudou muito, equity pode ter diminuído";
+      // Consider blockers impact
+      if (blockers.premiumBlockers > 1) {
+        return "🛡️ Bons blockers! Reduz mãos premium dos oponentes";
+      }
+      
+      return "📉 Board não ajudou - equity provavelmente diminuiu";
     }
 
-    function getOpponentAdjustment() {
-      const opponentAdjustment = {
-        1: 1.0, 2: 0.85, 3: 0.75, 4: 0.68, 5: 0.62,
-        6: 0.57, 7: 0.53, 8: 0.49, 9: 0.46
-      };
-      return opponentAdjustment[Math.min(gameState.opponents, 9)] || 0.40;
-    }
+
 
     function checkAchievements(isCorrect) {
       const newAchievements = [];
