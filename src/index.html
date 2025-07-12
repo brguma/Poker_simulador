@@ -48,21 +48,27 @@
     
     .mode-selector {
       display: flex;
-      justify-content: center;
-      gap: 8px;
+      flex-direction: row;
+      justify-content: space-between;
+      gap: 6px;
       margin: 15px 0;
-      flex-wrap: wrap;
+      flex-wrap: nowrap;
     }
     
     .mode-btn {
       background: #6b7280;
       color: white;
       border: none;
-      padding: 8px 16px;
+      padding: 8px 12px;
       border-radius: 20px;
-      font-size: 12px;
+      font-size: 11px;
       cursor: pointer;
       transition: all 0.3s;
+      flex: 1;
+      min-width: 50px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
     }
     
     .mode-btn.active {
@@ -177,23 +183,29 @@
     }
     
     .controls {
-      display: flex;
-      gap: 15px;
-      justify-content: center;
-      flex-wrap: wrap;
+      display: grid;
+      grid-template-columns: 2fr 1fr 1fr;
+      gap: 8px;
+      justify-content: stretch;
       margin: 20px 0;
+      width: 100%;
     }
     
     .btn {
       background: linear-gradient(135deg, #059669, #047857);
       color: white;
       border: none;
-      padding: 12px 24px;
+      padding: 12px 8px;
       border-radius: 25px;
       font-weight: bold;
       cursor: pointer;
       transition: all 0.3s;
       box-shadow: 0 4px 15px rgba(5, 150, 105, 0.3);
+      font-size: 14px;
+      text-align: center;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
     }
     
     .btn:hover {
@@ -288,21 +300,28 @@
     
     .tabs {
       display: flex;
-      gap: 10px;
+      flex-direction: row;
+      gap: 6px;
       margin-bottom: 20px;
-      justify-content: center;
-      flex-wrap: wrap;
+      justify-content: space-between;
+      flex-wrap: nowrap;
     }
     
     .tab {
       background: linear-gradient(135deg, #6b7280, #4b5563);
       color: white;
       border: none;
-      padding: 12px 20px;
+      padding: 10px 8px;
       border-radius: 20px;
       cursor: pointer;
       transition: all 0.3s;
       font-weight: 500;
+      font-size: 12px;
+      flex: 1;
+      text-align: center;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
     }
     
     .tab.active {
@@ -566,44 +585,215 @@
       50% { transform: scale(1.05); }
     }
     
-    /* Responsive Design */
-    @media (max-width: 768px) {
-      .options {
-        grid-template-columns: 1fr;
-      }
-      
-      .stats {
-        grid-template-columns: repeat(2, 1fr);
-      }
-      
-      .controls {
-        flex-direction: column;
-        align-items: center;
+    /* FORÇA LAYOUTS HORIZONTAIS GLOBALMENTE */
+    @media (max-width: 1000px) {
+      .mode-selector {
+        display: flex !important;
+        flex-direction: row !important;
+        flex-wrap: nowrap !important;
+        gap: 4px;
       }
       
       .tabs {
-        flex-direction: column;
+        display: flex !important;
+        flex-direction: row !important;
+        flex-wrap: nowrap !important;
+        gap: 4px;
       }
       
-      .mode-selector {
-        flex-direction: column;
-        align-items: center;
+      .controls {
+        display: grid !important;
+        grid-template-columns: 2fr 1fr 1fr !important;
+        gap: 6px;
       }
       
       .opponent-area {
-        flex-direction: column;
-        align-items: center;
+        display: grid !important;
+        grid-template-columns: repeat(auto-fit, minmax(70px, 1fr)) !important;
+        gap: 6px;
+      }
+    }
+
+    /* Responsive Design */
+    @media (max-width: 768px) {
+      body {
+        padding: 5px;
+      }
+      
+      .container {
+        max-width: 100%;
+      }
+      
+      .options {
+        grid-template-columns: 1fr;
+        gap: 10px;
+      }
+      
+      .stats {
+        grid-template-columns: repeat(3, 1fr);
+        gap: 8px;
+      }
+      
+      .controls {
+        grid-template-columns: 2fr 1fr 1fr;
+        gap: 8px;
+        margin: 15px 0;
+      }
+      
+      .btn {
+        padding: 10px 8px;
+        font-size: 12px;
+      }
+      
+      .btn.phase-btn {
+        font-size: 12px;
+        padding: 10px 8px;
+      }
+      
+      .tabs {
+        gap: 4px;
+        margin-bottom: 15px;
+      }
+      
+      .tab {
+        padding: 8px 6px;
+        font-size: 10px;
+        min-width: 70px;
+        max-width: none;
+        flex: 1;
+      }
+      
+      .mode-selector {
+        gap: 4px;
+        margin: 10px 0;
+      }
+      
+      .mode-btn {
+        padding: 6px 8px;
+        font-size: 9px;
+        min-width: 55px;
+        max-width: none;
+        flex: 1;
+      }
+      
+      .opponent-area {
+        grid-template-columns: repeat(auto-fit, minmax(70px, 1fr));
+        gap: 6px;
+        margin: 15px 0;
+      }
+      
+      .opponent-cards {
+        padding: 6px;
+        font-size: 11px;
+      }
+      
+      .opponent-name {
+        font-size: 9px;
+        margin-bottom: 4px;
       }
       
       .card {
-        font-size: 14px;
-        min-width: 40px;
-        padding: 10px 6px;
+        font-size: 11px;
+        min-width: 30px;
+        padding: 6px 4px;
+        margin: 1px;
+      }
+      
+      .game-board {
+        padding: 12px;
+      }
+      
+      .stat-card {
+        padding: 8px;
+      }
+      
+      .stat-value {
+        font-size: 16px;
+      }
+      
+      .header {
+        padding: 12px;
+        margin-bottom: 15px;
+      }
+      
+      .header h1 {
+        font-size: 18px;
+        margin-bottom: 5px;
+      }
+      
+      .header p {
+        font-size: 11px;
+      }
+      
+      .section {
+        padding: 12px;
+        margin: 15px 0;
+      }
+      
+      .progress-bar {
+        margin: 10px 0;
+        height: 10px;
+      }
+      
+      .tournament-info,
+      .beginners-hints {
+        padding: 8px;
+        margin: 8px 0;
+        font-size: 11px;
+      }
+      
+      #explanation {
+        font-size: 11px;
+        max-height: 180px;
+        padding: 6px;
+      }
+      
+      .achievement-grid {
+        grid-template-columns: 1fr;
+        gap: 8px;
+      }
+      
+      .achievement-card {
+        padding: 12px;
+      }
+      
+      .simple-chart {
+        height: 120px;
+        padding: 8px;
+      }
+      
+      .chart-container {
+        padding: 12px;
       }
       
       .install-prompt {
-        left: 20px;
-        right: 20px;
+        left: 10px;
+        right: 10px;
+        bottom: 10px;
+        padding: 10px 15px;
+        font-size: 12px;
+      }
+      
+      .achievement-notification {
+        left: 10px;
+        right: 10px;
+        top: 10px;
+        padding: 10px 15px;
+        font-size: 12px;
+      }
+      
+      .winner-announcement {
+        font-size: 18px;
+        padding: 15px;
+      }
+      
+      .hand-result {
+        padding: 15px;
+      }
+      
+      .option-btn {
+        padding: 15px;
+        font-size: 16px;
       }
     }
     
@@ -611,6 +801,67 @@
     @media (prefers-color-scheme: dark) {
       .card {
         box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+      }
+    }
+    
+    /* Extra small devices */
+    @media (max-width: 480px) {
+      .stats {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 6px;
+      }
+      
+      .stat-value {
+        font-size: 14px;
+      }
+      
+      .tab {
+        font-size: 9px;
+        padding: 6px 4px;
+        min-width: 60px;
+      }
+      
+      .mode-btn {
+        font-size: 8px;
+        padding: 4px 6px;
+        min-width: 50px;
+      }
+      
+      .opponent-area {
+        grid-template-columns: repeat(auto-fit, minmax(60px, 1fr));
+        gap: 4px;
+      }
+      
+      .card {
+        font-size: 10px;
+        min-width: 28px;
+        padding: 4px 2px;
+      }
+      
+      .header h1 {
+        font-size: 16px;
+      }
+      
+      .header p {
+        font-size: 10px;
+      }
+      
+      .btn {
+        font-size: 11px;
+        padding: 8px 6px;
+      }
+      
+      .controls {
+        gap: 6px;
+      }
+      
+      .game-board {
+        padding: 8px;
+      }
+      
+      .section {
+        padding: 8px;
+        margin: 10px 0;
       }
     }
     
@@ -631,9 +882,9 @@
       
       <!-- Mode Selector -->
       <div class="mode-selector">
-        <button class="mode-btn active" onclick="setGameMode('iniciante')">🎓 Iniciante</button>
+        <button class="mode-btn active" onclick="setGameMode('iniciante')">🎓 Início</button>
         <button class="mode-btn" onclick="setGameMode('normal')">🎯 Normal</button>
-        <button class="mode-btn" onclick="setGameMode('especialista')">🧠 Especialista</button>
+        <button class="mode-btn" onclick="setGameMode('especialista')">🧠 Expert</button>
         <button class="mode-btn" onclick="setGameMode('torneio')">🏆 Torneio</button>
         <button class="mode-btn" onclick="setGameMode('cenario')">📚 Cenário</button>
       </div>
@@ -642,9 +893,9 @@
     <!-- Navigation Tabs -->
     <div class="tabs">
       <button class="tab active" onclick="showTab('game')">🎮 Jogo</button>
-      <button class="tab" onclick="showTab('stats')">📊 Estatísticas</button>
+      <button class="tab" onclick="showTab('stats')">📊 Stats</button>
       <button class="tab" onclick="showTab('history')">📝 Histórico</button>
-      <button class="tab" onclick="showTab('achievements')">🏆 Conquistas</button>
+      <button class="tab" onclick="showTab('achievements')">🏆 Troféus</button>
       <button class="tab" onclick="showTab('ranking')">🏅 Ranking</button>
     </div>
     
@@ -734,7 +985,7 @@
         <div class="controls">
           <button class="btn phase-btn" id="phase-button" onclick="advancePhase()">🎯 Ver Flop</button>
           <button class="btn danger" onclick="foldHand()">🚫 Fold</button>
-          <button class="btn secondary" onclick="resetCurrentGame()">🔄 Novo Jogo</button>
+          <button class="btn secondary" onclick="resetCurrentGame()">🔄 Reset</button>
         </div>
         <div id="result-section" class="hidden" style="text-align: center; margin-top: 20px;">
           <div id="result-message"></div>
