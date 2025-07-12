@@ -1,895 +1,1035 @@
-<!DOCTYPE html>
-<html lang="pt-BR">
-<head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no" />
+<!-- Substitua apenas a seção JavaScript no seu arquivo src/index.html -->
+<!-- Cole este script SUBSTITUINDO o script existente -->
+
+<script>
+// ======================
+// POKER TRAINER LOGIC - VERSÃO CORRIGIDA
+// ======================
+
+// Game State
+let gameState = {
+  currentHand: 1,
+  score: { correct: 0, total: 0, folded: 0 },
+  streak: 0,
+  bestStreak: 0,
+  totalGames: 0,
+  phase: 'preflop',
+  playerCards: [],
+  communityCards: [],
+  opponentCards: [],
+  opponents: 3,
+  currentProbability: 0,
+  options: [],
+  correctAnswer: 0,
+  showingResult: false,
+  showingHandResult: false,
+  history: [],
+  achievements: [],
+  gameMode: 'iniciante',
+  stackSize: 1000,
+  blindLevel: 1,
+  phaseStats: {
+    preflop: { correct: 0, total: 0 },
+    flop: { correct: 0, total: 0 },
+    turn: { correct: 0, total: 0 },
+    river: { correct: 0, total: 0 }
+  },
+  handTypeStats: {},
+  usedCards: [],
+  handWinner: null,
+  deckForHand: [] // Deck específico para a mão atual
+};
+
+// Card data and constants
+const suits = ['♠', '♥', '♦', '♣'];
+const values = ['2', '3', '4', '5', '6', '7', '8', '9', 'T', 'J', 'Q', 'K', 'A'];
+const suitColors = { '♠': 'black', '♥': 'red', '♦': 'red', '♣': 'black' };
+
+const phaseNames = {
+  'preflop': 'Pré-Flop',
+  'flop': 'Flop',
+  'turn': 'Turn',
+  'river': 'River'
+};
+
+const achievementsList = [
+  { id: 'first_win', name: 'Primeira Vitória', description: 'Acerte sua primeira probabilidade', icon: '🎯' },
+  { id: 'streak_5', name: 'Sequência de 5', description: '5 acertos consecutivos', icon: '🔥' },
+  { id: 'streak_10', name: 'Ace High', description: '10 acertos consecutivos', icon: '🏆' },
+  { id: 'folder', name: 'Seleção Criteriosa', description: 'Faça fold em 10 mãos', icon: '🚫' },
+  { id: 'river_master', name: 'River Master', description: 'Acerte 10 probabilidades no river', icon: '🌊' },
+  { id: 'perfectionist', name: 'Perfeccionista', description: '95% de precisão em 20 mãos', icon: '💎' },
+  { id: 'analyzer', name: 'Analista', description: 'Complete 50 mãos', icon: '📊' },
+  { id: 'tournament_player', name: 'Jogador de Torneio', description: 'Jogue 10 mãos no modo torneio', icon: '🏆' },
+  { id: 'expert_mode', name: 'Modo Especialista', description: 'Complete um jogo no modo especialista', icon: '🧠' },
+  { id: 'poker_master', name: 'Mestre do Poker', description: '90% de precisão em 30 mãos', icon: '👑' }
+];
+
+const rankings = [
+  { name: "PokerPro", score: 85.2, games: 12 },
+  { name: "CardShark", score: 82.7, games: 8 },
+  { name: "BluffMaster", score: 79.3, games: 15 },
+  { name: "AceHunter", score: 76.8, games: 6 },
+  { name: "RiverRat", score: 74.5, games: 10 }
+];
+
+// Utility functions
+function shuffle(array) {
+  const newArray = [...array];
+  for (let i = newArray.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [newArray[i], newArray[j]] = [newArray[j], newArray[i]];
+  }
+  return newArray;
+}
+
+function createDeck() {
+  const deck = [];
+  for (let suit of suits) {
+    for (let value of values) {
+      deck.push({ value, suit });
+    }
+  }
+  return deck;
+}
+
+function getCardValue(value) {
+  if (value === 'A') return 14;
+  if (value === 'K') return 13;
+  if (value === 'Q') return 12;
+  if (value === 'J') return 11;
+  if (value === 'T') return 10;
+  return parseInt(value);
+}
+
+function isStraight(cards) {
+  if (cards.length < 5) return false;
+  const values = cards.map(card => getCardValue(card.value)).sort((a, b) => a - b);
+  const uniqueValues = [...new Set(values)];
   
-  <!-- PWA Meta Tags -->
-  <meta name="theme-color" content="#059669" />
-  <meta name="description" content="Treinador profissional de probabilidades de poker" />
-  
-  <!-- Apple PWA Meta Tags -->
-  <meta name="apple-mobile-web-app-capable" content="yes" />
-  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
-  <meta name="apple-mobile-web-app-title" content="PokerTrainer" />
-  
-  <!-- Manifest e Service Worker -->
-  <link rel="manifest" href="/manifest.json" />
-  <link rel="icon" href="/icon-192x192.png" />
-  
-  <title>Poker Probability Trainer</title>
-  
-  <!-- Styles Inline -->
-  <style>
-    * {
-      margin: 0;
-      padding: 0;
-      box-sizing: border-box;
-    }
-    
-    body {
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-      background: linear-gradient(135deg, #1f2937, #059669);
-      color: white;
-      min-height: 100vh;
-      padding: 20px;
-    }
-    
-    .container {
-      max-width: 1200px;
-      margin: 0 auto;
-    }
-    
-    .header {
-      background: rgba(0, 0, 0, 0.3);
-      padding: 20px;
-      border-radius: 15px;
-      margin-bottom: 20px;
-      text-align: center;
-    }
-    
-    .game-board {
-      background: rgba(5, 150, 105, 0.2);
-      padding: 30px;
-      border-radius: 15px;
-      margin-bottom: 20px;
-      backdrop-filter: blur(10px);
-    }
-    
-    .card {
-      display: inline-block;
-      background: white;
-      color: black;
-      padding: 15px 10px;
-      margin: 5px;
-      border-radius: 8px;
-      font-weight: bold;
-      font-size: 18px;
-      min-width: 50px;
-      text-align: center;
-      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
-    }
-    
-    .card.red {
-      color: #dc2626;
-    }
-    
-    .card.hidden {
-      background: #3b82f6;
-      color: white;
-    }
-    
-    .options {
-      display: grid;
-      grid-template-columns: repeat(2, 1fr);
-      gap: 15px;
-      margin: 20px 0;
-    }
-    
-    .option-btn {
-      background: #3b82f6;
-      color: white;
-      border: none;
-      padding: 20px;
-      border-radius: 10px;
-      font-size: 18px;
-      font-weight: bold;
-      cursor: pointer;
-      transition: all 0.3s;
-    }
-    
-    .option-btn:hover {
-      background: #2563eb;
-      transform: translateY(-2px);
-    }
-    
-    .option-btn.correct {
-      background: #16a34a !important;
-      animation: pulse 1s infinite;
-    }
-    
-    .option-btn.wrong {
-      background: #dc2626 !important;
-      animation: shake 0.5s;
-    }
-    
-    .option-btn:disabled {
-      cursor: not-allowed;
-      opacity: 0.7;
-    }
-    
-    .controls {
-      display: flex;
-      gap: 15px;
-      justify-content: center;
-      flex-wrap: wrap;
-      margin: 20px 0;
-    }
-    
-    .btn {
-      background: #059669;
-      color: white;
-      border: none;
-      padding: 12px 24px;
-      border-radius: 25px;
-      font-weight: bold;
-      cursor: pointer;
-      transition: all 0.3s;
-    }
-    
-    .btn:hover {
-      background: #047857;
-      transform: translateY(-2px);
-    }
-    
-    .btn.secondary {
-      background: #6b7280;
-    }
-    
-    .btn.danger {
-      background: #dc2626;
-    }
-    
-    .stats {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
-      gap: 15px;
-      margin: 20px 0;
-    }
-    
-    .stat-card {
-      background: rgba(0, 0, 0, 0.3);
-      padding: 15px;
-      border-radius: 10px;
-      text-align: center;
-    }
-    
-    .stat-value {
-      font-size: 24px;
-      font-weight: bold;
-      color: #f59e0b;
-    }
-    
-    .progress-bar {
-      width: 100%;
-      height: 10px;
-      background: rgba(255, 255, 255, 0.2);
-      border-radius: 5px;
-      overflow: hidden;
-      margin: 10px 0;
-    }
-    
-    .progress-fill {
-      height: 100%;
-      background: #f59e0b;
-      transition: width 0.5s ease;
-    }
-    
-    .section {
-      background: rgba(0, 0, 0, 0.2);
-      padding: 20px;
-      border-radius: 10px;
-      margin: 20px 0;
-    }
-    
-    .hidden {
-      display: none;
-    }
-    
-    .tabs {
-      display: flex;
-      gap: 10px;
-      margin-bottom: 20px;
-      justify-content: center;
-      flex-wrap: wrap;
-    }
-    
-    .tab {
-      background: #6b7280;
-      color: white;
-      border: none;
-      padding: 10px 20px;
-      border-radius: 20px;
-      cursor: pointer;
-      transition: all 0.3s;
-    }
-    
-    .tab.active {
-      background: #3b82f6;
-    }
-    
-    .install-prompt {
-      position: fixed;
-      bottom: 20px;
-      right: 20px;
-      background: #059669;
-      color: white;
-      border: none;
-      padding: 15px 25px;
-      border-radius: 25px;
-      font-weight: bold;
-      cursor: pointer;
-      box-shadow: 0 4px 15px rgba(5, 150, 105, 0.4);
-      z-index: 1000;
-    }
-    
-    @keyframes pulse {
-      0%, 100% { opacity: 1; }
-      50% { opacity: 0.7; }
-    }
-    
-    @keyframes shake {
-      0%, 100% { transform: translateX(0); }
-      25% { transform: translateX(-5px); }
-      75% { transform: translateX(5px); }
-    }
-    
-    @media (max-width: 768px) {
-      .options {
-        grid-template-columns: 1fr;
-      }
-      
-      .stats {
-        grid-template-columns: repeat(2, 1fr);
-      }
-      
-      .controls {
-        flex-direction: column;
-        align-items: center;
-      }
-      
-      .tabs {
-        flex-direction: column;
+  for (let i = 0; i <= uniqueValues.length - 5; i++) {
+    let consecutive = 1;
+    for (let j = i + 1; j < uniqueValues.length; j++) {
+      if (uniqueValues[j] === uniqueValues[j-1] + 1) {
+        consecutive++;
+        if (consecutive === 5) return true;
+      } else {
+        break;
       }
     }
-  </style>
-</head>
-<body>
-  <div class="container">
-    <div class="header">
-      <h1>🎯 Poker Probability Trainer</h1>
-      <p>Treine suas habilidades de cálculo de probabilidades no poker</p>
-    </div>
-    
-    <!-- Navigation Tabs -->
-    <div class="tabs">
-      <button class="tab active" onclick="showTab('game')">🎮 Jogo</button>
-      <button class="tab" onclick="showTab('stats')">📊 Estatísticas</button>
-      <button class="tab" onclick="showTab('history')">📝 Histórico</button>
-      <button class="tab" onclick="showTab('about')">ℹ️ Sobre</button>
-    </div>
-    
-    <!-- Game Tab -->
-    <div id="game-tab" class="tab-content">
-      <!-- Stats Display -->
-      <div class="stats">
-        <div class="stat-card">
-          <div class="stat-value" id="score">0/0</div>
-          <div>Acertos</div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-value" id="accuracy">0%</div>
-          <div>Precisão</div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-value" id="streak">0</div>
-          <div>Sequência</div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-value" id="hand-count">1/50</div>
-          <div>Mão</div>
-        </div>
-      </div>
-      
-      <!-- Progress Bar -->
-      <div class="progress-bar">
-        <div class="progress-fill" id="progress" style="width: 2%;"></div>
-      </div>
-      
-      <!-- Game Board -->
-      <div class="game-board">
-        <div style="text-align: center; margin-bottom: 30px;">
-          <h3>Mesa Comunitária</h3>
-          <div id="community-cards">
-            <span style="color: #9ca3af;">Aguardando o flop...</span>
-          </div>
-        </div>
-        
-        <div style="text-align: center; margin-bottom: 30px;">
-          <h3>Suas Cartas</h3>
-          <div id="player-cards">
-            <!-- Cartas serão inseridas aqui -->
-          </div>
-        </div>
-        
-        <div style="text-align: center;">
-          <h3 id="opponents-title">Oponentes (3)</h3>
-          <div id="opponent-cards">
-            <!-- Cartas dos oponentes serão inseridas aqui -->
-          </div>
-        </div>
-      </div>
-      
-      <!-- Question Section -->
-      <div class="section">
-        <h2 style="text-align: center; margin-bottom: 20px;">
-          Qual a probabilidade de você ganhar esta mão?
-        </h2>
-        <div class="options" id="options">
-          <!-- Options será inseridas aqui -->
-        </div>
-        <div class="controls">
-          <button class="btn danger" onclick="foldHand()">🚫 Fold</button>
-          <button class="btn secondary" onclick="newGame()">🔄 Nova Mão</button>
-        </div>
-        <div id="result-section" class="hidden" style="text-align: center; margin-top: 20px;">
-          <div id="result-message"></div>
-          <div id="correct-answer" style="margin: 10px 0;"></div>
-          <button class="btn" id="next-button" onclick="nextPhase()">➡️ Próxima Fase</button>
-        </div>
-      </div>
-    </div>
-    
-    <!-- Stats Tab -->
-    <div id="stats-tab" class="tab-content hidden">
-      <div class="section">
-        <h2>📊 Suas Estatísticas</h2>
-        <div class="stats">
-          <div class="stat-card">
-            <div class="stat-value" id="total-games">0</div>
-            <div>Jogos Completos</div>
-          </div>
-          <div class="stat-card">
-            <div class="stat-value" id="best-streak">0</div>
-            <div>Melhor Sequência</div>
-          </div>
-          <div class="stat-card">
-            <div class="stat-value" id="total-folds">0</div>
-            <div>Total de Folds</div>
-          </div>
-          <div class="stat-card">
-            <div class="stat-value" id="avg-accuracy">0%</div>
-            <div>Precisão Média</div>
-          </div>
-        </div>
-      </div>
-    </div>
-    
-    <!-- History Tab -->
-    <div id="history-tab" class="tab-content hidden">
-      <div class="section">
-        <h2>📝 Histórico Recente</h2>
-        <div id="history-list">
-          <p style="text-align: center; color: #9ca3af;">Jogue algumas mãos para ver o histórico</p>
-        </div>
-      </div>
-    </div>
-    
-    <!-- About Tab -->
-    <div id="about-tab" class="tab-content hidden">
-      <div class="section">
-        <h2>ℹ️ Sobre o Poker Trainer</h2>
-        <p style="line-height: 1.6; margin-bottom: 20px;">
-          Este é um treinador de probabilidades de poker desenvolvido para ajudar você a melhorar 
-          suas habilidades de cálculo de odds no Texas Hold'em.
-        </p>
-        <h3 style="margin: 20px 0 10px 0;">🎯 Como Jogar:</h3>
-        <ul style="line-height: 1.8; margin-left: 20px;">
-          <li>Analise suas cartas e a mesa</li>
-          <li>Estime a probabilidade de ganhar</li>
-          <li>Escolha uma das 4 opções</li>
-          <li>Receba feedback imediato</li>
-          <li>Complete 50 mãos para finalizar</li>
-        </ul>
-        <h3 style="margin: 20px 0 10px 0;">📱 PWA Features:</h3>
-        <ul style="line-height: 1.8; margin-left: 20px;">
-          <li>Funciona offline após instalação</li>
-          <li>Dados salvos localmente</li>
-          <li>Interface otimizada para mobile</li>
-          <li>Instalável como app nativo</li>
-        </ul>
-      </div>
-    </div>
-  </div>
+  }
   
-  <!-- Install Button -->
-  <button id="install-btn" class="install-prompt" style="display: none;">
-    📱 Instalar App
-  </button>
+  // Check for A-2-3-4-5 (wheel)
+  if (uniqueValues.includes(14) && uniqueValues.includes(2) && uniqueValues.includes(3) && 
+      uniqueValues.includes(4) && uniqueValues.includes(5)) {
+    return true;
+  }
   
-  <script>
-    // ======================
-    // POKER TRAINER LOGIC
-    // ======================
+  return false;
+}
+
+function evaluateHand(playerCards, communityCards) {
+  const allCards = [...playerCards, ...communityCards];
+  if (allCards.length < 5) return { rank: 0, score: 0, name: 'Carta Alta' };
+
+  const values = allCards.map(card => getCardValue(card.value));
+  const suits = allCards.map(card => card.suit);
+  const valueCounts = {};
+  const suitCounts = {};
+
+  values.forEach(value => valueCounts[value] = (valueCounts[value] || 0) + 1);
+  suits.forEach(suit => suitCounts[suit] = (suitCounts[suit] || 0) + 1);
+
+  const counts = Object.values(valueCounts).sort((a, b) => b - a);
+  const isFlush = Object.values(suitCounts).some(count => count >= 5);
+  const straight = isStraight(allCards);
+  const highCard = Math.max(...values);
+
+  if (isFlush && straight && values.includes(14) && values.includes(13)) 
+    return { rank: 10, score: 1000 + highCard, name: 'Royal Flush' };
+  if (isFlush && straight) 
+    return { rank: 9, score: 900 + highCard, name: 'Straight Flush' };
+  if (counts[0] === 4) 
+    return { rank: 8, score: 800 + highCard, name: 'Quadra' };
+  if (counts[0] === 3 && counts[1] === 2) 
+    return { rank: 7, score: 700 + highCard, name: 'Full House' };
+  if (isFlush) 
+    return { rank: 6, score: 600 + highCard, name: 'Flush' };
+  if (straight) 
+    return { rank: 5, score: 500 + highCard, name: 'Sequência' };
+  if (counts[0] === 3) 
+    return { rank: 4, score: 400 + highCard, name: 'Trinca' };
+  if (counts[0] === 2 && counts[1] === 2) 
+    return { rank: 3, score: 300 + highCard, name: 'Dois Pares' };
+  if (counts[0] === 2) 
+    return { rank: 2, score: 200 + highCard, name: 'Um Par' };
+  return { rank: 1, score: highCard, name: 'Carta Alta' };
+}
+
+function calculateAdvancedProbability(playerCards, communityCards, opponents) {
+  const handStrength = evaluateHand(playerCards, communityCards);
+  let baseProbability = 0;
+
+  // Base probability by hand strength
+  switch (handStrength.rank) {
+    case 10: baseProbability = 0.95; break; // Royal Flush
+    case 9: baseProbability = 0.90; break;  // Straight Flush
+    case 8: baseProbability = 0.85; break;  // Four of a Kind
+    case 7: baseProbability = 0.80; break;  // Full House
+    case 6: baseProbability = 0.75; break;  // Flush
+    case 5: baseProbability = 0.65; break;  // Straight
+    case 4: baseProbability = 0.55; break;  // Three of a Kind
+    case 3: baseProbability = 0.45; break;  // Two Pair
+    case 2: baseProbability = 0.35; break;  // One Pair
+    default: baseProbability = 0.25; break; // High Card
+  }
+
+  // Adjust for game mode
+  const modeMultiplier = {
+    'iniciante': 1.0,
+    'normal': 1.0,
+    'especialista': 0.95,
+    'torneio': 1.1 * (gameState.stackSize / 1000),
+    'cenario': 1.0
+  };
+
+  // Phase adjustment
+  const phaseMultiplier = {
+    'preflop': 0.7,
+    'flop': 0.85,
+    'turn': 0.95,
+    'river': 1.0
+  };
+
+  // Opponent penalty
+  const opponentPenalty = Math.pow(0.85, opponents - 1);
+  
+  return Math.min(0.95, Math.max(0.05, 
+    baseProbability * phaseMultiplier[gameState.phase] * opponentPenalty * modeMultiplier[gameState.gameMode]
+  ));
+}
+
+function generateOptions(correctProb) {
+  const options = [correctProb];
+  const range = gameState.gameMode === 'especialista' ? 0.08 : 0.15;
+  
+  while (options.length < 4) {
+    const variation = (Math.random() - 0.5) * range * 2;
+    const newOption = Math.max(0.05, Math.min(0.95, correctProb + variation));
     
-    // Game State
-    let gameState = {
-      currentHand: 1,
+    if (!options.some(opt => Math.abs(opt - newOption) < 0.03)) {
+      options.push(newOption);
+    }
+  }
+  
+  return shuffle(options);
+}
+
+function renderCard(card, isHidden = false, shouldReveal = false) {
+  const colorClass = suitColors[card.suit] === 'red' ? 'red' : '';
+  const hiddenClass = isHidden ? 'hidden' : '';
+  const revealClass = shouldReveal ? 'revealed' : '';
+  
+  return `<span class="card ${colorClass} ${hiddenClass} ${revealClass}">
+    ${isHidden ? '?' : card.value + card.suit}
+  </span>`;
+}
+
+function dealNewHand() {
+  console.log('🎯 Dealing new hand...');
+  
+  // Create fresh deck for this hand
+  gameState.deckForHand = shuffle(createDeck());
+  gameState.opponents = Math.floor(Math.random() * 7) + 2; // 2-8 opponents
+  
+  // Deal player cards (first 2 cards)
+  gameState.playerCards = gameState.deckForHand.slice(0, 2);
+  console.log('Player cards:', gameState.playerCards);
+  
+  // Deal opponent cards
+  gameState.opponentCards = [];
+  let cardIndex = 2;
+  for (let i = 0; i < gameState.opponents; i++) {
+    gameState.opponentCards.push(gameState.deckForHand.slice(cardIndex, cardIndex + 2));
+    cardIndex += 2;
+  }
+  console.log('Opponent cards:', gameState.opponentCards);
+  
+  // Mark used cards
+  gameState.usedCards = [...gameState.playerCards, ...gameState.opponentCards.flat()];
+  
+  // Reset hand state
+  gameState.communityCards = [];
+  gameState.phase = 'preflop';
+  gameState.showingResult = false;
+  gameState.showingHandResult = false;
+  gameState.handWinner = null;
+  
+  // Tournament mode adjustments
+  if (gameState.gameMode === 'torneio' && gameState.currentHand % 10 === 0) {
+    gameState.blindLevel++;
+  }
+  
+  // Calculate initial probability
+  gameState.currentProbability = calculateAdvancedProbability(
+    gameState.playerCards, 
+    gameState.communityCards, 
+    gameState.opponents
+  );
+  
+  gameState.correctAnswer = gameState.currentProbability;
+  gameState.options = generateOptions(gameState.currentProbability);
+  
+  console.log('Initial probability:', gameState.currentProbability);
+  
+  updateDisplay();
+  updateBeginnerHints();
+}
+
+function updateBeginnerHints() {
+  const hintsContainer = document.getElementById('beginners-hints');
+  const hintContent = document.getElementById('hint-content');
+  
+  if (gameState.gameMode !== 'iniciante') {
+    hintsContainer.classList.add('hidden');
+    return;
+  }
+  
+  hintsContainer.classList.remove('hidden');
+  const hand = evaluateHand(gameState.playerCards, gameState.communityCards);
+  const hints = [];
+  
+  if (hand.rank >= 7) hints.push("🔥 Mão muito forte - aposte com confiança!");
+  else if (hand.rank >= 4) hints.push("💪 Mão boa - você tem chances!");
+  else if (hand.rank >= 2) hints.push("⚠️ Mão média - cuidado com muitos oponentes");
+  else hints.push("❌ Mão fraca - considere fazer fold");
+  
+  // Check for draws
+  if (gameState.communityCards.length >= 3) {
+    const allCards = [...gameState.playerCards, ...gameState.communityCards];
+    const suits = allCards.map(c => c.suit);
+    const suitCounts = {};
+    suits.forEach(suit => suitCounts[suit] = (suitCounts[suit] || 0) + 1);
+    
+    if (Math.max(...Object.values(suitCounts)) >= 4) {
+      hints.push("🌊 Possível flush draw - você pode melhorar!");
+    }
+  }
+  
+  hintContent.innerHTML = hints.map(hint => `<div>• ${hint}</div>`).join('');
+}
+
+function updateDisplay() {
+  // Update stats
+  document.getElementById('score').textContent = 
+    `${gameState.score.correct}/${gameState.score.total}`;
+  
+  const accuracy = gameState.score.total > 0 ? 
+    Math.round((gameState.score.correct / gameState.score.total) * 100) : 0;
+  document.getElementById('accuracy').textContent = `${accuracy}%`;
+  
+  document.getElementById('streak').textContent = gameState.streak;
+  document.getElementById('hand-count').textContent = `${gameState.currentHand}/50`;
+  document.getElementById('phase-display').textContent = phaseNames[gameState.phase];
+  
+  // Update progress
+  const progress = (gameState.currentHand / 50) * 100;
+  document.getElementById('progress').style.width = `${progress}%`;
+  
+  // Update tournament info
+  const tournamentInfo = document.getElementById('tournament-info');
+  if (gameState.gameMode === 'torneio') {
+    tournamentInfo.classList.remove('hidden');
+    document.getElementById('stack-size').textContent = gameState.stackSize;
+    document.getElementById('blind-level').textContent = gameState.blindLevel;
+  } else {
+    tournamentInfo.classList.add('hidden');
+  }
+  
+  // Update cards
+  document.getElementById('player-cards').innerHTML = 
+    gameState.playerCards.map(card => renderCard(card)).join('');
+  
+  // Show hand strength
+  const handStrength = evaluateHand(gameState.playerCards, gameState.communityCards);
+  document.getElementById('hand-strength').textContent = 
+    `Mão atual: ${handStrength.name}`;
+  
+  // Update community cards
+  if (gameState.communityCards.length === 0) {
+    document.getElementById('community-cards').innerHTML = 
+      '<span style="color: #9ca3af;">Aguardando o flop...</span>';
+  } else {
+    document.getElementById('community-cards').innerHTML = 
+      gameState.communityCards.map(card => renderCard(card)).join('');
+  }
+  
+  document.getElementById('opponents-title').textContent = 
+    `👥 Oponentes (${gameState.opponents})`;
+  
+  // Create opponent cards display
+  let opponentHTML = '';
+  for (let i = 0; i < gameState.opponents; i++) {
+    const isRevealed = gameState.showingHandResult;
+    const oppCards = gameState.opponentCards[i] || [];
+    
+    opponentHTML += `
+      <div class="opponent-cards">
+        <div class="opponent-name">Oponente ${i + 1}</div>
+        <div>
+          ${isRevealed && oppCards.length > 0 ? 
+            oppCards.map(card => renderCard(card, false, true)).join('') :
+            renderCard({ value: '?', suit: '?' }, true) + renderCard({ value: '?', suit: '?' }, true)
+          }
+        </div>
+      </div>
+    `;
+  }
+  document.getElementById('opponent-cards').innerHTML = opponentHTML;
+  
+  // Update options only if not showing result
+  if (!gameState.showingResult) {
+    const optionsHTML = gameState.options.map((option, index) => {
+      const percentage = Math.round(option * 100);
+      return `<button class="option-btn" onclick="selectOption(${option})">${percentage}%</button>`;
+    }).join('');
+    
+    document.getElementById('options').innerHTML = optionsHTML;
+  }
+  
+  // Hide/show sections
+  document.getElementById('result-section').classList.toggle('hidden', !gameState.showingResult);
+  document.getElementById('hand-result').classList.toggle('hidden', !gameState.showingHandResult);
+  document.getElementById('question-section').classList.toggle('hidden', gameState.showingHandResult);
+}
+
+function selectOption(selectedOption) {
+  if (gameState.showingResult) return;
+  
+  console.log('Selected option:', selectedOption, 'Correct:', gameState.correctAnswer);
+  
+  gameState.showingResult = true;
+  const isCorrect = Math.abs(selectedOption - gameState.correctAnswer) < 0.01;
+  
+  // Update score
+  gameState.score.total++;
+  if (isCorrect) {
+    gameState.score.correct++;
+    gameState.streak++;
+    gameState.bestStreak = Math.max(gameState.bestStreak, gameState.streak);
+  } else {
+    gameState.streak = 0;
+  }
+  
+  // Update phase stats
+  gameState.phaseStats[gameState.phase].total++;
+  if (isCorrect) {
+    gameState.phaseStats[gameState.phase].correct++;
+  }
+  
+  // Update hand type stats
+  const handType = evaluateHand(gameState.playerCards, gameState.communityCards).name;
+  if (!gameState.handTypeStats[handType]) {
+    gameState.handTypeStats[handType] = { correct: 0, total: 0 };
+  }
+  gameState.handTypeStats[handType].total++;
+  if (isCorrect) {
+    gameState.handTypeStats[handType].correct++;
+  }
+  
+  // Add to history
+  gameState.history.unshift({
+    hand: gameState.currentHand,
+    phase: gameState.phase,
+    playerCards: [...gameState.playerCards],
+    communityCards: [...gameState.communityCards],
+    estimated: selectedOption,
+    actual: gameState.correctAnswer,
+    isCorrect: isCorrect,
+    handType: handType,
+    timestamp: new Date()
+  });
+  
+  // Keep only last 50 hands
+  if (gameState.history.length > 50) {
+    gameState.history.pop();
+  }
+  
+  // Check achievements
+  checkAchievements(isCorrect);
+  
+  // Update option buttons
+  const buttons = document.querySelectorAll('.option-btn');
+  buttons.forEach((btn, index) => {
+    btn.disabled = true;
+    const optionValue = gameState.options[index];
+    
+    if (Math.abs(optionValue - gameState.correctAnswer) < 0.01) {
+      btn.classList.add('correct');
+    } else if (Math.abs(optionValue - selectedOption) < 0.01) {
+      btn.classList.add('wrong');
+    }
+  });
+  
+  // Show result
+  document.getElementById('result-message').innerHTML = isCorrect ? 
+    '<span style="color: #16a34a; font-weight: bold; font-size: 18px;">✅ Correto!</span>' :
+    '<span style="color: #dc2626; font-weight: bold; font-size: 18px;">❌ Incorreto!</span>';
+  
+  document.getElementById('correct-answer').innerHTML = 
+    `Probabilidade correta: <strong style="color: #f59e0b;">${Math.round(gameState.correctAnswer * 100)}%</strong>`;
+  
+  // Add explanation
+  const diff = Math.abs(selectedOption - gameState.correctAnswer);
+  let explanation = '';
+  if (diff > 0.15) {
+    explanation = gameState.gameMode === 'iniciante' ? 
+      '💡 Grande diferença! Observe a força da sua mão e quantidade de oponentes.' :
+      'Considere a força da mão atual e o número de oponentes na mesa.';
+  } else if (diff > 0.05) {
+    explanation = 'Boa estimativa! Continue praticando para melhorar a precisão.';
+  } else {
+    explanation = '🎯 Excelente! Sua estimativa foi muito precisa!';
+  }
+  document.getElementById('explanation').textContent = explanation;
+  
+  // Update next button
+  const nextBtn = document.getElementById('next-button');
+  if (gameState.phase === 'river') {
+    nextBtn.textContent = '🎯 Ver Resultado Final';
+    nextBtn.onclick = () => showHandResult();
+  } else {
+    const nextPhase = {
+      'preflop': 'Flop',
+      'flop': 'Turn', 
+      'turn': 'River'
+    }[gameState.phase];
+    nextBtn.textContent = `➡️ ${nextPhase}`;
+    nextBtn.onclick = () => nextPhase();
+  }
+  
+  updateDisplay();
+  saveGame();
+}
+
+// 🔧 FUNÇÃO CORRIGIDA - PROGRESSÃO DAS FASES
+function nextPhase() {
+  console.log('🎯 Next phase called. Current phase:', gameState.phase);
+  
+  if (gameState.phase === 'river') {
+    console.log('At river, showing hand result');
+    showHandResult();
+    return;
+  }
+  
+  // Get next cards from the same deck used for this hand
+  const availableCards = gameState.deckForHand.slice(gameState.usedCards.length);
+  
+  console.log('Available cards for community:', availableCards.length);
+  
+  if (gameState.phase === 'preflop') {
+    // Deal flop (3 cards)
+    const flopCards = availableCards.slice(0, 3);
+    gameState.communityCards = flopCards;
+    gameState.usedCards.push(...flopCards);
+    gameState.phase = 'flop';
+    console.log('Dealt flop:', flopCards);
+    
+  } else if (gameState.phase === 'flop') {
+    // Deal turn (1 card)
+    const turnCard = availableCards[0];
+    gameState.communityCards.push(turnCard);
+    gameState.usedCards.push(turnCard);
+    gameState.phase = 'turn';
+    console.log('Dealt turn:', turnCard);
+    
+  } else if (gameState.phase === 'turn') {
+    // Deal river (1 card)
+    const riverCard = availableCards[0];
+    gameState.communityCards.push(riverCard);
+    gameState.usedCards.push(riverCard);
+    gameState.phase = 'river';
+    console.log('Dealt river:', riverCard);
+  }
+  
+  console.log('New phase:', gameState.phase);
+  console.log('Community cards:', gameState.communityCards);
+  
+  // Recalculate probability for new phase
+  gameState.currentProbability = calculateAdvancedProbability(
+    gameState.playerCards, 
+    gameState.communityCards, 
+    gameState.opponents
+  );
+  
+  gameState.correctAnswer = gameState.currentProbability;
+  gameState.options = generateOptions(gameState.currentProbability);
+  gameState.showingResult = false;
+  
+  console.log('New probability:', gameState.currentProbability);
+  
+  updateDisplay();
+  updateBeginnerHints();
+}
+
+function checkAchievements(isCorrect) {
+  const newAchievements = [];
+  
+  // First win
+  if (isCorrect && gameState.score.correct === 1 && !gameState.achievements.includes('first_win')) {
+    newAchievements.push('first_win');
+  }
+  
+  // Streaks
+  if (gameState.streak >= 5 && !gameState.achievements.includes('streak_5')) {
+    newAchievements.push('streak_5');
+  }
+  if (gameState.streak >= 10 && !gameState.achievements.includes('streak_10')) {
+    newAchievements.push('streak_10');
+  }
+  
+  // Folder
+  if (gameState.score.folded >= 10 && !gameState.achievements.includes('folder')) {
+    newAchievements.push('folder');
+  }
+  
+  // River master
+  const riverCorrect = gameState.phaseStats.river.correct;
+  if (riverCorrect >= 10 && !gameState.achievements.includes('river_master')) {
+    newAchievements.push('river_master');
+  }
+  
+  // Perfectionist (95% in 20 hands)
+  if (gameState.score.total >= 20) {
+    const accuracy = (gameState.score.correct / gameState.score.total) * 100;
+    if (accuracy >= 95 && !gameState.achievements.includes('perfectionist')) {
+      newAchievements.push('perfectionist');
+    }
+    if (accuracy >= 90 && gameState.score.total >= 30 && !gameState.achievements.includes('poker_master')) {
+      newAchievements.push('poker_master');
+    }
+  }
+  
+  // Analyzer
+  if (gameState.currentHand >= 50 && !gameState.achievements.includes('analyzer')) {
+    newAchievements.push('analyzer');
+  }
+  
+  // Tournament player
+  if (gameState.gameMode === 'torneio' && gameState.currentHand >= 10 && !gameState.achievements.includes('tournament_player')) {
+    newAchievements.push('tournament_player');
+  }
+  
+  // Expert mode
+  if (gameState.gameMode === 'especialista' && gameState.currentHand >= 50 && !gameState.achievements.includes('expert_mode')) {
+    newAchievements.push('expert_mode');
+  }
+  
+  // Show notifications for new achievements
+  newAchievements.forEach(achievementId => {
+    if (!gameState.achievements.includes(achievementId)) {
+      gameState.achievements.push(achievementId);
+      showAchievementNotification(achievementId);
+    }
+  });
+}
+
+function showAchievementNotification(achievementId) {
+  const achievement = achievementsList.find(a => a.id === achievementId);
+  if (!achievement) return;
+  
+  const notification = document.getElementById('achievement-notification');
+  const text = document.getElementById('achievement-text');
+  
+  text.innerHTML = `<strong>${achievement.icon} ${achievement.name}</strong><br>${achievement.description}`;
+  notification.style.display = 'block';
+  
+  setTimeout(() => {
+    notification.style.display = 'none';
+  }, 4000);
+}
+
+function determineWinner() {
+  const playerHand = evaluateHand(gameState.playerCards, gameState.communityCards);
+  const results = [{ 
+    player: 'Você', 
+    hand: playerHand, 
+    cards: gameState.playerCards,
+    isPlayer: true
+  }];
+  
+  gameState.opponentCards.forEach((oppCards, index) => {
+    const oppHand = evaluateHand(oppCards, gameState.communityCards);
+    results.push({ 
+      player: `Oponente ${index + 1}`, 
+      hand: oppHand, 
+      cards: oppCards,
+      isPlayer: false
+    });
+  });
+  
+  // Sort by hand strength (rank first, then score)
+  results.sort((a, b) => {
+    if (a.hand.rank !== b.hand.rank) return b.hand.rank - a.hand.rank;
+    return b.hand.score - a.hand.score;
+  });
+  
+  return results[0];
+}
+
+function showHandResult() {
+  console.log('🎯 Showing hand result');
+  
+  gameState.showingHandResult = true;
+  gameState.handWinner = determineWinner();
+  
+  const resultDiv = document.getElementById('hand-result');
+  const resultTitle = document.getElementById('result-title');
+  const winnerHand = document.getElementById('winner-hand');
+  const winnerCards = document.getElementById('winner-cards');
+  
+  const isPlayerWinner = gameState.handWinner.isPlayer;
+  
+  resultDiv.className = `hand-result ${isPlayerWinner ? 'winner' : 'loser'}`;
+  
+  resultTitle.innerHTML = isPlayerWinner ? 
+    '<div style="font-size: 24px; color: #16a34a;">🏆 Você Ganhou!</div>' :
+    `<div style="font-size: 24px; color: #dc2626;">😔 ${gameState.handWinner.player} Ganhou</div>`;
+  
+  winnerHand.innerHTML = `
+    <div style="font-size: 18px; color: #f59e0b; margin-bottom: 10px;">
+      ${gameState.handWinner.hand.name}
+    </div>
+  `;
+  
+  winnerCards.innerHTML = gameState.handWinner.cards.map(card => renderCard(card)).join('');
+  
+  updateDisplay();
+}
+
+function continueToNextHand() {
+  console.log('🎯 Continue to next hand. Current:', gameState.currentHand);
+  
+  if (gameState.currentHand >= 50) {
+    finishGame();
+    return;
+  }
+  
+  gameState.currentHand++;
+  dealNewHand();
+}
+
+function foldHand() {
+  console.log('🚫 Fold hand');
+  gameState.score.folded++;
+  continueToNextHand();
+}
+
+function newGame() {
+  console.log('🔄 New game');
+  if (gameState.currentHand >= 50) {
+    finishGame();
+    return;
+  }
+  
+  gameState.currentHand++;
+  dealNewHand();
+}
+
+function finishGame() {
+  gameState.totalGames++;
+  const finalScore = gameState.score.total > 0 ? 
+    (gameState.score.correct / gameState.score.total) * 100 : 0;
+  
+  let message = `🏆 Jogo Finalizado!\n\n`;
+  message += `Acertos: ${gameState.score.correct}/${gameState.score.total}\n`;
+  message += `Precisão: ${finalScore.toFixed(1)}%\n`;
+  message += `Melhor sequência: ${gameState.bestStreak}\n`;
+  message += `Folds: ${gameState.score.folded}\n`;
+  message += `Conquistas: ${gameState.achievements.length}/${achievementsList.length}`;
+  
+  alert(message);
+  
+  // Reset for new game
+  gameState.currentHand = 1;
+  gameState.score = { correct: 0, total: 0, folded: 0 };
+  gameState.streak = 0;
+  gameState.stackSize = 1000;
+  gameState.blindLevel = 1;
+  
+  dealNewHand();
+  saveGame();
+}
+
+function setGameMode(mode) {
+  gameState.gameMode = mode;
+  
+  // Update mode buttons
+  document.querySelectorAll('.mode-btn').forEach(btn => {
+    btn.classList.remove('active');
+  });
+  event.target.classList.add('active');
+  
+  updateDisplay();
+  updateBeginnerHints();
+  saveGame();
+}
+
+// Tab system
+function showTab(tabName) {
+  // Hide all tabs
+  document.querySelectorAll('.tab-content').forEach(tab => {
+    tab.classList.add('hidden');
+  });
+  
+  // Remove active class from all tab buttons
+  document.querySelectorAll('.tab').forEach(tab => {
+    tab.classList.remove('active');
+  });
+  
+  // Show selected tab
+  document.getElementById(tabName + '-tab').classList.remove('hidden');
+  
+  // Add active class to clicked tab
+  event.target.classList.add('active');
+  
+  // Update content based on tab
+  if (tabName === 'stats') {
+    updateStatsTab();
+  } else if (tabName === 'history') {
+    updateHistoryTab();
+  } else if (tabName === 'achievements') {
+    updateAchievementsTab();
+  } else if (tabName === 'ranking') {
+    updateRankingTab();
+  }
+}
+
+function updateStatsTab() {
+  document.getElementById('total-games').textContent = gameState.totalGames;
+  document.getElementById('best-streak').textContent = gameState.bestStreak;
+  document.getElementById('total-folds').textContent = gameState.score.folded;
+  
+  const avgAccuracy = gameState.score.total > 0 ? 
+    Math.round((gameState.score.correct / gameState.score.total) * 100) : 0;
+  document.getElementById('avg-accuracy').textContent = `${avgAccuracy}%`;
+  
+  // Update hand type stats
+  const handTypeContainer = document.getElementById('hand-type-stats');
+  const handTypes = Object.entries(gameState.handTypeStats);
+  
+  if (handTypes.length === 0) {
+    handTypeContainer.innerHTML = '<p style="text-align: center; color: #9ca3af;">Jogue mais mãos para ver estatísticas por tipo</p>';
+  } else {
+    const handTypeHTML = handTypes.map(([handType, stats]) => {
+      const accuracy = Math.round((stats.correct / stats.total) * 100);
+      const colorClass = accuracy >= 80 ? 'text-green-400' : accuracy >= 60 ? 'text-yellow-400' : 'text-red-400';
+      
+      return `
+        <div style="display: flex; justify-content: space-between; align-items: center; padding: 10px; background: rgba(255,255,255,0.05); border-radius: 8px; margin-bottom: 8px;">
+          <span>${handType}</span>
+          <span class="${colorClass}" style="font-weight: bold;">
+            ${accuracy}% (${stats.total})
+          </span>
+        </div>
+      `;
+    }).join('');
+    
+    handTypeContainer.innerHTML = handTypeHTML;
+  }
+}
+
+function updateHistoryTab() {
+  const historyContainer = document.getElementById('history-list');
+  
+  if (gameState.history.length === 0) {
+    historyContainer.innerHTML = '<p style="text-align: center; color: #9ca3af;">Jogue algumas mãos para ver o histórico detalhado</p>';
+    return;
+  }
+  
+  const historyHTML = gameState.history.slice(0, 20).map((hand) => {
+    const resultIcon = hand.isCorrect ? '✅' : '❌';
+    const bgColor = hand.isCorrect ? 'rgba(22, 163, 74, 0.1)' : 'rgba(220, 38, 38, 0.1)';
+    
+    return `
+      <div style="background: ${bgColor}; padding: 15px; border-radius: 10px; margin-bottom: 15px; border: 1px solid rgba(255,255,255,0.1);">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+          <strong>Mão #${hand.hand} - ${phaseNames[hand.phase]}</strong>
+          <span style="font-size: 20px;">${resultIcon}</span>
+        </div>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; font-size: 14px; margin-bottom: 10px;">
+          <div><strong>Suas cartas:</strong> ${hand.playerCards.map(c => `${c.value}${c.suit}`).join(' ')}</div>
+          <div><strong>Mesa:</strong> ${hand.communityCards.map(c => `${c.value}${c.suit}`).join(' ') || 'Pré-flop'}</div>
+          <div><strong>Sua estimativa:</strong> ${Math.round(hand.estimated * 100)}%</div>
+          <div><strong>Probabilidade real:</strong> ${Math.round(hand.actual * 100)}%</div>
+        </div>
+        <div style="font-size: 14px;">
+          <strong>Tipo de mão:</strong> ${hand.handType} | 
+          <strong>Diferença:</strong> ${Math.abs(Math.round((hand.estimated - hand.actual) * 100))}%
+        </div>
+      </div>
+    `;
+  }).join('');
+  
+  historyContainer.innerHTML = historyHTML;
+}
+
+function updateAchievementsTab() {
+  const achievementsContainer = document.getElementById('achievements-grid');
+  
+  const achievementsHTML = achievementsList.map((achievement) => {
+    const unlocked = gameState.achievements.includes(achievement.id);
+    const cardClass = unlocked ? 'unlocked' : 'locked';
+    
+    return `
+      <div class="achievement-card ${cardClass}">
+        <div style="font-size: 48px; margin-bottom: 15px;">${achievement.icon}</div>
+        <div style="font-weight: bold; font-size: 18px; margin-bottom: 10px;">
+          ${achievement.name}
+        </div>
+        <div style="font-size: 14px; margin-bottom: 15px;">
+          ${achievement.description}
+        </div>
+        ${unlocked ? 
+          '<div style="color: #16a34a; font-weight: bold;">🎉 DESBLOQUEADO!</div>' :
+          '<div style="color: #6b7280;">🔒 Bloqueado</div>'
+        }
+      </div>
+    `;
+  }).join('');
+  
+  achievementsContainer.innerHTML = achievementsHTML;
+}
+
+function updateRankingTab() {
+  const rankingContainer = document.getElementById('ranking-list');
+  
+  // Add player to ranking if they have games
+  const playerRanking = [...rankings];
+  if (gameState.totalGames > 0) {
+    const playerAccuracy = gameState.score.total > 0 ? 
+      (gameState.score.correct / gameState.score.total) * 100 : 0;
+    
+    playerRanking.push({
+      name: "Você",
+      score: playerAccuracy,
+      games: gameState.totalGames,
+      isPlayer: true
+    });
+  }
+  
+  // Sort by score
+  playerRanking.sort((a, b) => b.score - a.score);
+  
+  const rankingHTML = playerRanking.slice(0, 10).map((entry, index) => {
+    const position = index + 1;
+    const medalColor = position <= 3 ? '#f59e0b' : '#6b7280';
+    const bgColor = entry.isPlayer ? 'rgba(245, 158, 11, 0.1)' : 'rgba(0, 0, 0, 0.3)';
+    
+    return `
+      <div style="background: ${bgColor}; padding: 15px; border-radius: 10px; margin-bottom: 10px; border: 1px solid rgba(255,255,255,0.1);">
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+          <div style="display: flex; align-items: center; gap: 15px;">
+            <span style="color: ${medalColor}; font-size: 20px; font-weight: bold;">#${position}</span>
+            <span style="font-weight: bold; font-size: 16px;">${entry.name}</span>
+          </div>
+          <div style="text-align: right;">
+            <div style="font-weight: bold; color: #f59e0b;">${entry.score.toFixed(1)}%</div>
+            <div style="font-size: 12px; color: #9ca3af;">${entry.games} jogos</div>
+          </div>
+        </div>
+      </div>
+    `;
+  }).join('');
+  
+  rankingContainer.innerHTML = rankingHTML;
+}
+
+function resetPersonalStats() {
+  if (confirm('⚠️ Tem certeza que deseja resetar todas suas estatísticas? Esta ação não pode ser desfeita.')) {
+    gameState = {
+      ...gameState,
       score: { correct: 0, total: 0, folded: 0 },
       streak: 0,
       bestStreak: 0,
       totalGames: 0,
-      phase: 'preflop', // preflop, flop, turn, river
-      playerCards: [],
-      communityCards: [],
-      opponents: 3,
-      currentProbability: 0,
-      options: [],
-      correctAnswer: 0,
-      showingResult: false,
-      history: []
+      history: [],
+      achievements: [],
+      phaseStats: {
+        preflop: { correct: 0, total: 0 },
+        flop: { correct: 0, total: 0 },
+        turn: { correct: 0, total: 0 },
+        river: { correct: 0, total: 0 }
+      },
+      handTypeStats: {}
     };
     
-    // Card data
-    const suits = ['♠', '♥', '♦', '♣'];
-    const values = ['2', '3', '4', '5', '6', '7', '8', '9', 'T', 'J', 'Q', 'K', 'A'];
-    const suitColors = { '♠': 'black', '♥': 'red', '♦': 'red', '♣': 'black' };
-    
-    // Utility functions
-    function shuffle(array) {
-      const newArray = [...array];
-      for (let i = newArray.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
-        [newArray[i], newArray[j]] = [newArray[j], newArray[i]];
-      }
-      return newArray;
+    saveGame();
+    updateDisplay();
+    alert('✅ Estatísticas resetadas com sucesso!');
+  }
+}
+
+// Local Storage
+function saveGame() {
+  try {
+    localStorage.setItem('poker_trainer_complete', JSON.stringify(gameState));
+  } catch (e) {
+    console.log('Could not save game data');
+  }
+}
+
+function loadGame() {
+  try {
+    const saved = localStorage.getItem('poker_trainer_complete');
+    if (saved) {
+      const savedState = JSON.parse(saved);
+      gameState = { ...gameState, ...savedState };
     }
-    
-    function createDeck() {
-      const deck = [];
-      for (let suit of suits) {
-        for (let value of values) {
-          deck.push({ value, suit });
-        }
-      }
-      return deck;
-    }
-    
-    function getCardValue(value) {
-      if (value === 'A') return 14;
-      if (value === 'K') return 13;
-      if (value === 'Q') return 12;
-      if (value === 'J') return 11;
-      if (value === 'T') return 10;
-      return parseInt(value);
-    }
-    
-    function calculateProbability(playerCards, communityCards, opponents) {
-      // Simplified probability calculation
-      const totalCards = playerCards.length + communityCards.length;
-      let baseProb = 0.5;
-      
-      // Adjust based on cards
-      const highCards = playerCards.filter(card => ['A', 'K', 'Q', 'J'].includes(card.value)).length;
-      baseProb += highCards * 0.1;
-      
-      // Adjust for opponents
-      baseProb *= Math.pow(0.85, opponents - 1);
-      
-      // Adjust for phase
-      const phaseMultiplier = {
-        'preflop': 0.7,
-        'flop': 0.85,
-        'turn': 0.95,
-        'river': 1.0
-      };
-      
-      baseProb *= phaseMultiplier[gameState.phase];
-      
-      return Math.min(0.95, Math.max(0.05, baseProb));
-    }
-    
-    function generateOptions(correctProb) {
-      const options = [correctProb];
-      const range = 0.15;
-      
-      while (options.length < 4) {
-        const variation = (Math.random() - 0.5) * range * 2;
-        const newOption = Math.max(0.05, Math.min(0.95, correctProb + variation));
-        
-        if (!options.some(opt => Math.abs(opt - newOption) < 0.05)) {
-          options.push(newOption);
-        }
-      }
-      
-      return shuffle(options);
-    }
-    
-    function renderCard(card, isHidden = false) {
-      const colorClass = suitColors[card.suit] === 'red' ? 'red' : '';
-      const hiddenClass = isHidden ? 'hidden' : '';
-      
-      return `<span class="card ${colorClass} ${hiddenClass}">
-        ${isHidden ? '?' : card.value + card.suit}
-      </span>`;
-    }
-    
-    function dealNewHand() {
-      const deck = shuffle(createDeck());
-      gameState.opponents = Math.floor(Math.random() * 7) + 2; // 2-8 opponents
-      
-      gameState.playerCards = deck.slice(0, 2);
-      gameState.communityCards = [];
-      gameState.phase = 'preflop';
-      gameState.showingResult = false;
-      
-      gameState.currentProbability = calculateProbability(
-        gameState.playerCards, 
-        gameState.communityCards, 
-        gameState.opponents
-      );
-      
-      gameState.correctAnswer = gameState.currentProbability;
-      gameState.options = generateOptions(gameState.currentProbability);
-      
-      updateDisplay();
-    }
-    
-    function updateDisplay() {
-      // Update stats
-      document.getElementById('score').textContent = 
-        `${gameState.score.correct}/${gameState.score.total}`;
-      
-      const accuracy = gameState.score.total > 0 ? 
-        Math.round((gameState.score.correct / gameState.score.total) * 100) : 0;
-      document.getElementById('accuracy').textContent = `${accuracy}%`;
-      
-      document.getElementById('streak').textContent = gameState.streak;
-      document.getElementById('hand-count').textContent = `${gameState.currentHand}/50`;
-      
-      // Update progress
-      const progress = (gameState.currentHand / 50) * 100;
-      document.getElementById('progress').style.width = `${progress}%`;
-      
-      // Update cards
-      document.getElementById('player-cards').innerHTML = 
-        gameState.playerCards.map(card => renderCard(card)).join('');
-      
-      if (gameState.communityCards.length === 0) {
-        document.getElementById('community-cards').innerHTML = 
-          '<span style="color: #9ca3af;">Aguardando o flop...</span>';
-      } else {
-        document.getElementById('community-cards').innerHTML = 
-          gameState.communityCards.map(card => renderCard(card)).join('');
-      }
-      
-      document.getElementById('opponents-title').textContent = 
-        `Oponentes (${gameState.opponents})`;
-      
-      // Create opponent placeholder cards
-      let opponentHTML = '';
-      for (let i = 0; i < gameState.opponents; i++) {
-        opponentHTML += `
-          <div style="display: inline-block; margin: 10px;">
-            <div style="font-size: 12px; margin-bottom: 5px;">Op. ${i + 1}</div>
-            ${renderCard({ value: '?', suit: '?' }, true)}
-            ${renderCard({ value: '?', suit: '?' }, true)}
-          </div>
-        `;
-      }
-      document.getElementById('opponent-cards').innerHTML = opponentHTML;
-      
-      // Update options
-      const optionsHTML = gameState.options.map((option, index) => {
-        const percentage = Math.round(option * 100);
-        return `<button class="option-btn" onclick="selectOption(${option})">${percentage}%</button>`;
-      }).join('');
-      
-      document.getElementById('options').innerHTML = optionsHTML;
-      
-      // Hide result section
-      document.getElementById('result-section').classList.add('hidden');
-    }
-    
-    function selectOption(selectedOption) {
-      if (gameState.showingResult) return;
-      
-      gameState.showingResult = true;
-      const isCorrect = Math.abs(selectedOption - gameState.correctAnswer) < 0.01;
-      
-      // Update score
-      gameState.score.total++;
-      if (isCorrect) {
-        gameState.score.correct++;
-        gameState.streak++;
-        gameState.bestStreak = Math.max(gameState.bestStreak, gameState.streak);
-      } else {
-        gameState.streak = 0;
-      }
-      
-      // Add to history
-      gameState.history.unshift({
-        hand: gameState.currentHand,
-        phase: gameState.phase,
-        estimated: selectedOption,
-        actual: gameState.correctAnswer,
-        isCorrect: isCorrect,
-        timestamp: new Date()
-      });
-      
-      // Keep only last 20 hands
-      if (gameState.history.length > 20) {
-        gameState.history.pop();
-      }
-      
-      // Update option buttons
-      const buttons = document.querySelectorAll('.option-btn');
-      buttons.forEach((btn, index) => {
-        btn.disabled = true;
-        const optionValue = gameState.options[index];
-        
-        if (Math.abs(optionValue - gameState.correctAnswer) < 0.01) {
-          btn.classList.add('correct');
-        } else if (Math.abs(optionValue - selectedOption) < 0.01) {
-          btn.classList.add('wrong');
-        }
-      });
-      
-      // Show result
-      document.getElementById('result-message').innerHTML = isCorrect ? 
-        '<span style="color: #16a34a; font-weight: bold;">✅ Correto!</span>' :
-        '<span style="color: #dc2626; font-weight: bold;">❌ Incorreto!</span>';
-      
-      document.getElementById('correct-answer').innerHTML = 
-        `Probabilidade correta: <strong style="color: #f59e0b;">${Math.round(gameState.correctAnswer * 100)}%</strong>`;
-      
-      document.getElementById('result-section').classList.remove('hidden');
-      
-      // Update next button text
-      const nextBtn = document.getElementById('next-button');
-      if (gameState.phase === 'river') {
-        nextBtn.textContent = '🎯 Próxima Mão';
-        nextBtn.onclick = () => newGame();
-      } else {
-        const nextPhase = {
-          'preflop': 'Flop',
-          'flop': 'Turn', 
-          'turn': 'River'
-        }[gameState.phase];
-        nextBtn.textContent = `➡️ ${nextPhase}`;
-        nextBtn.onclick = () => nextPhase();
-      }
-      
-      updateDisplay();
-      saveGame();
-    }
-    
-    function nextPhase() {
-      if (gameState.phase === 'river') {
-        newGame();
-        return;
-      }
-      
-      const deck = shuffle(createDeck());
-      // Simple simulation - just add community cards
-      
-      if (gameState.phase === 'preflop') {
-        gameState.communityCards = deck.slice(0, 3); // Flop
-        gameState.phase = 'flop';
-      } else if (gameState.phase === 'flop') {
-        gameState.communityCards.push(deck[0]); // Turn
-        gameState.phase = 'turn';
-      } else if (gameState.phase === 'turn') {
-        gameState.communityCards.push(deck[1]); // River
-        gameState.phase = 'river';
-      }
-      
-      gameState.currentProbability = calculateProbability(
-        gameState.playerCards, 
-        gameState.communityCards, 
-        gameState.opponents
-      );
-      
-      gameState.correctAnswer = gameState.currentProbability;
-      gameState.options = generateOptions(gameState.currentProbability);
-      gameState.showingResult = false;
-      
-      updateDisplay();
-    }
-    
-    function foldHand() {
-      gameState.score.folded++;
-      newGame();
-    }
-    
-    function newGame() {
-      if (gameState.currentHand >= 50) {
-        finishGame();
-        return;
-      }
-      
-      gameState.currentHand++;
-      dealNewHand();
-    }
-    
-    function finishGame() {
-      gameState.totalGames++;
-      alert(`🏆 Jogo finalizado!\n\nAcertos: ${gameState.score.correct}/${gameState.score.total}\nPrecisão: ${Math.round((gameState.score.correct / gameState.score.total) * 100)}%\nMelhor sequência: ${gameState.bestStreak}`);
-      
-      // Reset for new game
-      gameState.currentHand = 1;
-      gameState.score = { correct: 0, total: 0, folded: 0 };
-      gameState.streak = 0;
-      
-      dealNewHand();
-      saveGame();
-    }
-    
-    // Tab system
-    function showTab(tabName) {
-      // Hide all tabs
-      document.querySelectorAll('.tab-content').forEach(tab => {
-        tab.classList.add('hidden');
-      });
-      
-      // Remove active class from all tab buttons
-      document.querySelectorAll('.tab').forEach(tab => {
-        tab.classList.remove('active');
-      });
-      
-      // Show selected tab
-      document.getElementById(tabName + '-tab').classList.remove('hidden');
-      
-      // Add active class to clicked tab
-      event.target.classList.add('active');
-      
-      // Update content based on tab
-      if (tabName === 'stats') {
-        updateStatsTab();
-      } else if (tabName === 'history') {
-        updateHistoryTab();
-      }
-    }
-    
-    function updateStatsTab() {
-      document.getElementById('total-games').textContent = gameState.totalGames;
-      document.getElementById('best-streak').textContent = gameState.bestStreak;
-      document.getElementById('total-folds').textContent = gameState.score.folded;
-      
-      const avgAccuracy = gameState.score.total > 0 ? 
-        Math.round((gameState.score.correct / gameState.score.total) * 100) : 0;
-      document.getElementById('avg-accuracy').textContent = `${avgAccuracy}%`;
-    }
-    
-    function updateHistoryTab() {
-      const historyContainer = document.getElementById('history-list');
-      
-      if (gameState.history.length === 0) {
-        historyContainer.innerHTML = '<p style="text-align: center; color: #9ca3af;">Jogue algumas mãos para ver o histórico</p>';
-        return;
-      }
-      
-      const historyHTML = gameState.history.map((hand, index) => {
-        const resultClass = hand.isCorrect ? 'correct' : 'wrong';
-        const resultIcon = hand.isCorrect ? '✅' : '❌';
-        
-        return `
-          <div style="background: rgba(0,0,0,0.3); padding: 15px; border-radius: 10px; margin-bottom: 10px;">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
-              <strong>Mão #${hand.hand} - ${hand.phase}</strong>
-              <span style="font-size: 20px;">${resultIcon}</span>
-            </div>
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; font-size: 14px;">
-              <div>Sua estimativa: <strong>${Math.round(hand.estimated * 100)}%</strong></div>
-              <div>Probabilidade real: <strong>${Math.round(hand.actual * 100)}%</strong></div>
-            </div>
-          </div>
-        `;
-      }).join('');
-      
-      historyContainer.innerHTML = historyHTML;
-    }
-    
-    // Local Storage
-    function saveGame() {
-      try {
-        localStorage.setItem('poker_trainer_data', JSON.stringify(gameState));
-      } catch (e) {
-        console.log('Could not save game data');
-      }
-    }
-    
-    function loadGame() {
-      try {
-        const saved = localStorage.getItem('poker_trainer_data');
-        if (saved) {
-          const savedState = JSON.parse(saved);
-          // Merge saved state with current state
-          gameState = { ...gameState, ...savedState };
-        }
-      } catch (e) {
-        console.log('Could not load game data');
-      }
-    }
-    
-    // PWA Installation
-    let deferredPrompt;
-    
-    window.addEventListener('beforeinstallprompt', (e) => {
-      e.preventDefault();
-      deferredPrompt = e;
-      
-      const installBtn = document.getElementById('install-btn');
-      installBtn.style.display = 'block';
-      
-      installBtn.addEventListener('click', async () => {
-        if (!deferredPrompt) return;
-        
-        deferredPrompt.prompt();
-        const { outcome } = await deferredPrompt.userChoice;
-        
-        if (outcome === 'accepted') {
-          installBtn.style.display = 'none';
-        }
-        
-        deferredPrompt = null;
-      });
-    });
-    
-    window.addEventListener('appinstalled', () => {
-      document.getElementById('install-btn').style.display = 'none';
-    });
-    
-    // Initialize game
-    function initGame() {
-      loadGame();
-      dealNewHand();
-      updateDisplay();
-    }
-    
-    // Start the game
-    initGame();
-    
-    console.log('🎯 Poker Trainer carregado com sucesso!');
-  </script>
+  } catch (e) {
+    console.log('Could not load game data');
+  }
+}
+
+// PWA Installation
+let deferredPrompt;
+
+window.addEventListener('beforeinstallprompt', (e) => {
+  e.preventDefault();
+  deferredPrompt = e;
   
-  <!-- Simple Manifest inline -->
-  <script>
-    // Create simple manifest
-    const manifestData = {
-      "name": "Poker Probability Trainer",
-      "short_name": "PokerTrainer",
-      "description": "Treinador de probabilidades de poker",
-      "start_url": "/",
-      "display": "standalone",
-      "background_color": "#1f2937",
-      "theme_color": "#059669",
-      "icons": [
-        {
-          "src": "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' fill='%23059669'/><text x='50' y='60' font-size='40' text-anchor='middle' fill='white'>🃏</text></svg>",
-          "sizes": "192x192",
-          "type": "image/svg+xml"
-        }
-      ]
-    };
+  const installBtn = document.getElementById('install-btn');
+  installBtn.style.display = 'block';
+  
+  installBtn.addEventListener('click', async () => {
+    if (!deferredPrompt) return;
     
-    const blob = new Blob([JSON.stringify(manifestData)], {type: 'application/json'});
-    const manifestURL = URL.createObjectURL(blob);
+    deferredPrompt.prompt();
+    const { outcome } = await deferredPrompt.userChoice;
     
-    const link = document.createElement('link');
-    link.rel = 'manifest';
-    link.href = manifestURL;
-    document.head.appendChild(link);
-  </script>
-</body>
-</html>
+    if (outcome === 'accepted') {
+      installBtn.style.display = 'none';
+    }
+    
+    deferredPrompt = null;
+  });
+});
+
+window.addEventListener('appinstalled', () => {
+  document.getElementById('install-btn').style.display = 'none';
+});
+
+// Initialize game
+function initGame() {
+  console.log('🎯 Initializing Poker Trainer...');
+  loadGame();
+  dealNewHand();
+  updateDisplay();
+  updateBeginnerHints();
+}
+
+// Start the game
+initGame();
+
+console.log('🎯 Poker Trainer Completo carregado com sucesso!');
+</script>
