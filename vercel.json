@@ -2,20 +2,6 @@
   "version": 2,
   "name": "poker-trainer-pwa",
   "public": true,
-  "github": {
-    "silent": true
-  },
-  "functions": {},
-  "builds": [
-    {
-      "src": "src/**/*",
-      "use": "@vercel/static"
-    },
-    {
-      "src": "public/**/*",
-      "use": "@vercel/static"
-    }
-  ],
   "routes": [
     {
       "src": "/public/(.*)",
@@ -89,10 +75,6 @@
         {
           "key": "Referrer-Policy",
           "value": "strict-origin-when-cross-origin"
-        },
-        {
-          "key": "Permissions-Policy",
-          "value": "camera=(), microphone=(), geolocation=(self), payment=()"
         }
       ]
     },
@@ -121,32 +103,6 @@
           "value": "image/png"
         }
       ]
-    },
-    {
-      "source": "/src/style.css",
-      "headers": [
-        {
-          "key": "Cache-Control",
-          "value": "public, max-age=86400"
-        },
-        {
-          "key": "Content-Type",
-          "value": "text/css"
-        }
-      ]
-    },
-    {
-      "source": "/src/app.js",
-      "headers": [
-        {
-          "key": "Cache-Control",
-          "value": "public, max-age=86400"
-        },
-        {
-          "key": "Content-Type",
-          "value": "application/javascript"
-        }
-      ]
     }
   ],
   "rewrites": [
@@ -165,101 +121,8 @@
       "source": "/poker",
       "destination": "/",
       "permanent": true
-    },
-    {
-      "source": "/game",
-      "destination": "/",
-      "permanent": true
     }
   ],
   "trailingSlash": false,
-  "cleanUrls": true,
-  "framework": null,
-  "installCommand": "npm install",
-  "buildCommand": "npm run build",
-  "outputDirectory": "dist",
-  "devCommand": "npm run dev",
-  "env": {
-    "NODE_ENV": "production"
-  },
-  "regions": ["sfo1", "iad1"],
-  "analytics": {
-    "enable": false
-  },
-  "speed-insights": {
-    "enable": false
-  },
-  "crons": [],
-  "edge-config": {},
-  "pro": false,
-  "deployment": {
-    "regions": ["sfo1"],
-    "memory": 128,
-    "maxDuration": 10
-  },
-  "build": {
-    "env": {
-      "NODE_ENV": "production",
-      "APP_ENV": "production"
-    }
-  },
-  "git": {
-    "deploymentEnabled": true,
-    "autoJobCancelation": true
-  },
-  "scope": "personal",
-  "domains": [],
-  "alias": [],
-  "preview": {
-    "allowlist": [],
-    "denylist": []
-  },
-  "ssr": false,
-  "spa": true,
-  "apiRoutes": false,
-  "staticFiles": true,
-  "serverless": false,
-  "edge": false,
-  "middleware": false,
-  "database": false,
-  "storage": false,
-  "kv": false,
-  "cache": {
-    "maxAge": 86400,
-    "staleWhileRevalidate": 604800,
-    "immutable": true
-  },
-  "security": {
-    "allowedMethods": ["GET", "HEAD", "OPTIONS"],
-    "allowedOrigins": ["*"],
-    "allowedHeaders": ["*"],
-    "credentials": false
-  },
-  "performance": {
-    "compression": true,
-    "minify": true,
-    "bundleAnalyzer": false
-  },
-  "meta": {
-    "title": "Poker Probability Trainer PWA",
-    "description": "Treinador profissional de probabilidades de poker com funcionalidade offline",
-    "author": "brguma",
-    "keywords": "poker, probabilidades, pwa, treinamento, offline",
-    "robots": "index, follow",
-    "language": "pt-BR",
-    "charset": "UTF-8",
-    "viewport": "width=device-width, initial-scale=1.0",
-    "theme-color": "#059669",
-    "background-color": "#1f2937"
-  },
-  "monitoring": {
-    "analytics": false,
-    "errorTracking": false,
-    "performance": false
-  },
-  "integrations": {
-    "lighthouse": true,
-    "webVitals": true,
-    "pwa": true
-  }
+  "cleanUrls": true
 }
