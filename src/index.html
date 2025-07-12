@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no" />
+  
+  <!-- PWA Meta Tags -->
+  <meta name="theme-color" content="#059669" />
+  <meta name="description" content="Treinador profissional de probabilidades de poker com estatísticas avançadas e múltiplos modos de jogo" />
+  <meta name="keywords" content="poker, probabilidades, treinamento, cartas, texas holdem, pwa" />
+  
+  <!-- Apple PWA Meta Tags -->
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+  <meta name="apple-mobile-web-app-title" content="PokerTrainer" />
+  <link rel="apple-touch-icon" href="../public/icons/icon-152x152.png" />
+  
+  <!-- Microsoft PWA Meta Tags -->
+  <meta name="msapplication-TileImage" content="../public/icons/icon-144x144.png" />
+  <meta name="msapplication-TileColor" content="#059669" />
+  
+  <!-- Manifest -->
+  <link rel="manifest" href="../public/manifest.json" />
+  
+  <!-- Favicon -->
+  <link rel="icon" href="../public/icons/icon-192x192.png" />
+  
+  <!-- Estilos -->
+  <link rel="stylesheet" href="style.css">
+  
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  
+  <!-- React e Recharts -->
+  <script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+  <script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/recharts/2.8.0/Recharts.js"></script>
+  
+  <title>Poker Probability Trainer - PWA</title>
+</head>
+<body>
+  <noscript>Você precisa habilitar JavaScript para usar este app.</noscript>
+  
+  <!-- Loading Screen -->
+  <div id="loading" class="loading-screen">
+    <div class="loading-content">
+      <div class="loading-icon">🃏</div>
+      <h1>Poker Trainer</h1>
+      <div class="loading-bar">
+        <div class="loading-progress"></div>
+      </div>
+      <p>Carregando seu treinador de poker...</p>
+    </div>
+  </div>
+  
+  <!-- App Container -->
+  <div id="root" style="display: none;"></div>
+  
+  <!-- PWA Install Elements -->
+  <button id="installButton" class="install-prompt" style="display: none;">
+    📱 Instalar App
+  </button>
+  
+  <div id="updatePrompt" class="update-prompt" style="display: none;">
+    <div class="update-content">
+      <span>🔄 Nova versão disponível!</span>
+      <button id="updateButton">Atualizar</button>
+      <button id="dismissUpdate">×</button>
+    </div>
+  </div>
+  
+  <div id="pwaStatus" class="pwa-status" style="display: none;"></div>
+  
+  <!-- Notification Container -->
+  <div id="notifications" class="notification-container"></div>
+  
+  <!-- Scripts -->
+  <script src="app.js"></script>
+  
+  <!-- PWA Registration -->
+  <script>
+    // Loading screen
+    window.addEventListener('load', () => {
+      setTimeout(() => {
+        document.getElementById('loading').style.display = 'none';
+        document.getElementById('root').style.display = 'block';
+      }, 2000);
+    });
+
+    // Service Worker Registration
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('../public/sw.js', {
+          scope: '/'
+        })
+        .then((registration) => {
+          console.log('✅ SW registrado:', registration.scope);
+          
+          // Check for updates
+          registration.addEventListener('updatefound', () => {
+            const newWorker = registration.installing;
+            newWorker.addEventListener('statechange', () => {
+              if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                showUpdatePrompt();
+              }
+            });
+          });
+        })
+        .catch((error) => {
+          console.log('❌ SW registration failed:', error);
+        });
+      });
+    }
+
+    // PWA Install
+    let deferredPrompt;
+    const installButton = document.getElementById('installButton');
+
+    window.addEventListener('beforeinstallprompt', (e) => {
+      e.preventDefault();
+      deferredPrompt = e;
+      installButton.style.display = 'block';
+      showNotification('📱 App pode ser instalado!', 'info');
+    });
+
+    installButton.addEventListener('click', async () => {
+      if (!deferredPrompt) return;
+      
+      deferredPrompt.prompt();
+      const { outcome } = await deferredPrompt.userChoice;
+      
+      if (outcome === 'accepted') {
+        showNotification('🎉 App instalado com sucesso!', 'success');
+        installButton.style.display = 'none';
+      }
+      
+      deferredPrompt = null;
+    });
+
+    window.addEventListener('appinstalled', () => {
+      showNotification('🚀 App instalado! Agora funciona offline.', 'success');
+      installButton.style.display = 'none';
+    });
+
+    // Update Prompt
+    function showUpdatePrompt() {
+      document.getElementById('updatePrompt').style.display = 'block';
+    }
+
+    document.getElementById('updateButton').addEventListener('click', () => {
+      window.location.reload();
+    });
+
+    document.getElementById('dismissUpdate').addEventListener('click', () => {
+      document.getElementById('updatePrompt').style.display = 'none';
+    });
+
+    // Notifications
+    function showNotification(message, type = 'info') {
+      const notification = document.createElement('div');
+      notification.className = `notification ${type}`;
+      notification.innerHTML = `
+        <span>${message}</span>
+        <button onclick="this.parentElement.remove()">×</button>
+      `;
+      
+      document.getElementById('notifications').appendChild(notification);
+      
+      setTimeout(() => {
+        notification.remove();
+      }, 5000);
+    }
+
+    // PWA Status Detection
+    function detectPWAStatus() {
+      const isPWA = window.matchMedia('(display-mode: standalone)').matches || 
+                    window.navigator.standalone === true;
+      
+      if (isPWA) {
+        showNotification('🎯 Rodando como PWA instalado!', 'success');
+        document.body.classList.add('pwa-mode');
+      }
+    }
+
+    // Online/Offline Status
+    function updateNetworkStatus() {
+      const status = navigator.onLine ? 'online' : 'offline';
+      document.body.className = document.body.className.replace(/network-\w+/, '');
+      document.body.classList.add(`network-${status}`);
+      
+      if (!navigator.onLine) {
+        showNotification('📱 Modo offline ativado', 'warning');
+      } else {
+        showNotification('🌐 Conectado novamente', 'success');
+      }
+    }
+
+    window.addEventListener('online', updateNetworkStatus);
+    window.addEventListener('offline', updateNetworkStatus);
+    window.addEventListener('load', detectPWAStatus);
+
+    // Initialize
+    updateNetworkStatus();
+  </script>
+</body>
+</html>

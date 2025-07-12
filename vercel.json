@@ -1,0 +1,265 @@
+{
+  "version": 2,
+  "name": "poker-trainer-pwa",
+  "public": true,
+  "github": {
+    "silent": true
+  },
+  "functions": {},
+  "builds": [
+    {
+      "src": "src/**/*",
+      "use": "@vercel/static"
+    },
+    {
+      "src": "public/**/*",
+      "use": "@vercel/static"
+    }
+  ],
+  "routes": [
+    {
+      "src": "/public/(.*)",
+      "dest": "/public/$1",
+      "headers": {
+        "Cache-Control": "public, max-age=31536000, immutable"
+      }
+    },
+    {
+      "src": "/public/sw.js",
+      "dest": "/public/sw.js",
+      "headers": {
+        "Service-Worker-Allowed": "/",
+        "Cache-Control": "public, max-age=0, must-revalidate",
+        "Content-Type": "application/javascript"
+      }
+    },
+    {
+      "src": "/public/manifest.json",
+      "dest": "/public/manifest.json",
+      "headers": {
+        "Content-Type": "application/manifest+json",
+        "Cache-Control": "public, max-age=86400"
+      }
+    },
+    {
+      "src": "/sw.js",
+      "dest": "/public/sw.js",
+      "headers": {
+        "Service-Worker-Allowed": "/",
+        "Cache-Control": "public, max-age=0, must-revalidate",
+        "Content-Type": "application/javascript"
+      }
+    },
+    {
+      "src": "/manifest.json",
+      "dest": "/public/manifest.json",
+      "headers": {
+        "Content-Type": "application/manifest+json",
+        "Cache-Control": "public, max-age=86400"
+      }
+    },
+    {
+      "src": "/offline.html",
+      "dest": "/public/offline.html",
+      "headers": {
+        "Cache-Control": "public, max-age=86400"
+      }
+    },
+    {
+      "src": "/(.*)",
+      "dest": "/src/index.html"
+    }
+  ],
+  "headers": [
+    {
+      "source": "/(.*)",
+      "headers": [
+        {
+          "key": "X-Content-Type-Options",
+          "value": "nosniff"
+        },
+        {
+          "key": "X-Frame-Options",
+          "value": "DENY"
+        },
+        {
+          "key": "X-XSS-Protection",
+          "value": "1; mode=block"
+        },
+        {
+          "key": "Referrer-Policy",
+          "value": "strict-origin-when-cross-origin"
+        },
+        {
+          "key": "Permissions-Policy",
+          "value": "camera=(), microphone=(), geolocation=(self), payment=()"
+        }
+      ]
+    },
+    {
+      "source": "/src/index.html",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=0, must-revalidate"
+        },
+        {
+          "key": "Content-Security-Policy",
+          "value": "default-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://cdn.tailwindcss.com https://unpkg.com; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdnjs.cloudflare.com https://cdn.tailwindcss.com https://unpkg.com; style-src 'self' 'unsafe-inline' https://cdn.tailwindcss.com; img-src 'self' data: blob:; connect-src 'self' https:; font-src 'self' data:; object-src 'none'; media-src 'self'; worker-src 'self'; frame-src 'none'"
+        }
+      ]
+    },
+    {
+      "source": "/public/icons/(.*)",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=31536000, immutable"
+        },
+        {
+          "key": "Content-Type",
+          "value": "image/png"
+        }
+      ]
+    },
+    {
+      "source": "/src/style.css",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=86400"
+        },
+        {
+          "key": "Content-Type",
+          "value": "text/css"
+        }
+      ]
+    },
+    {
+      "source": "/src/app.js",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=86400"
+        },
+        {
+          "key": "Content-Type",
+          "value": "application/javascript"
+        }
+      ]
+    }
+  ],
+  "rewrites": [
+    {
+      "source": "/((?!api|_next|_static|favicon.ico|public|src).*)",
+      "destination": "/src/index.html"
+    }
+  ],
+  "redirects": [
+    {
+      "source": "/app",
+      "destination": "/",
+      "permanent": true
+    },
+    {
+      "source": "/poker",
+      "destination": "/",
+      "permanent": true
+    },
+    {
+      "source": "/game",
+      "destination": "/",
+      "permanent": true
+    }
+  ],
+  "trailingSlash": false,
+  "cleanUrls": true,
+  "framework": null,
+  "installCommand": "npm install",
+  "buildCommand": "npm run build",
+  "outputDirectory": "dist",
+  "devCommand": "npm run dev",
+  "env": {
+    "NODE_ENV": "production"
+  },
+  "regions": ["sfo1", "iad1"],
+  "analytics": {
+    "enable": false
+  },
+  "speed-insights": {
+    "enable": false
+  },
+  "crons": [],
+  "edge-config": {},
+  "pro": false,
+  "deployment": {
+    "regions": ["sfo1"],
+    "memory": 128,
+    "maxDuration": 10
+  },
+  "build": {
+    "env": {
+      "NODE_ENV": "production",
+      "APP_ENV": "production"
+    }
+  },
+  "git": {
+    "deploymentEnabled": true,
+    "autoJobCancelation": true
+  },
+  "scope": "personal",
+  "domains": [],
+  "alias": [],
+  "preview": {
+    "allowlist": [],
+    "denylist": []
+  },
+  "ssr": false,
+  "spa": true,
+  "apiRoutes": false,
+  "staticFiles": true,
+  "serverless": false,
+  "edge": false,
+  "middleware": false,
+  "database": false,
+  "storage": false,
+  "kv": false,
+  "cache": {
+    "maxAge": 86400,
+    "staleWhileRevalidate": 604800,
+    "immutable": true
+  },
+  "security": {
+    "allowedMethods": ["GET", "HEAD", "OPTIONS"],
+    "allowedOrigins": ["*"],
+    "allowedHeaders": ["*"],
+    "credentials": false
+  },
+  "performance": {
+    "compression": true,
+    "minify": true,
+    "bundleAnalyzer": false
+  },
+  "meta": {
+    "title": "Poker Probability Trainer PWA",
+    "description": "Treinador profissional de probabilidades de poker com funcionalidade offline",
+    "author": "brguma",
+    "keywords": "poker, probabilidades, pwa, treinamento, offline",
+    "robots": "index, follow",
+    "language": "pt-BR",
+    "charset": "UTF-8",
+    "viewport": "width=device-width, initial-scale=1.0",
+    "theme-color": "#059669",
+    "background-color": "#1f2937"
+  },
+  "monitoring": {
+    "analytics": false,
+    "errorTracking": false,
+    "performance": false
+  },
+  "integrations": {
+    "lighthouse": true,
+    "webVitals": true,
+    "pwa": true
+  }
+}
