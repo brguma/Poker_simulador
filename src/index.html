@@ -6,201 +6,890 @@
   
   <!-- PWA Meta Tags -->
   <meta name="theme-color" content="#059669" />
-  <meta name="description" content="Treinador profissional de probabilidades de poker com estatísticas avançadas e múltiplos modos de jogo" />
-  <meta name="keywords" content="poker, probabilidades, treinamento, cartas, texas holdem, pwa" />
+  <meta name="description" content="Treinador profissional de probabilidades de poker" />
   
   <!-- Apple PWA Meta Tags -->
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="default" />
   <meta name="apple-mobile-web-app-title" content="PokerTrainer" />
-  <link rel="apple-touch-icon" href="../public/icons/icon-152x152.png" />
   
-  <!-- Microsoft PWA Meta Tags -->
-  <meta name="msapplication-TileImage" content="../public/icons/icon-144x144.png" />
-  <meta name="msapplication-TileColor" content="#059669" />
+  <!-- Manifest e Service Worker -->
+  <link rel="manifest" href="/manifest.json" />
+  <link rel="icon" href="/icon-192x192.png" />
   
-  <!-- Manifest -->
-  <link rel="manifest" href="../public/manifest.json" />
+  <title>Poker Probability Trainer</title>
   
-  <!-- Favicon -->
-  <link rel="icon" href="../public/icons/icon-192x192.png" />
-  
-  <!-- Estilos -->
-  <link rel="stylesheet" href="style.css">
-  
-  <!-- Tailwind CSS -->
-  <script src="https://cdn.tailwindcss.com"></script>
-  
-  <!-- React e Recharts -->
-  <script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
-  <script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/recharts/2.8.0/Recharts.js"></script>
-  
-  <title>Poker Probability Trainer - PWA</title>
+  <!-- Styles Inline -->
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: linear-gradient(135deg, #1f2937, #059669);
+      color: white;
+      min-height: 100vh;
+      padding: 20px;
+    }
+    
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+    
+    .header {
+      background: rgba(0, 0, 0, 0.3);
+      padding: 20px;
+      border-radius: 15px;
+      margin-bottom: 20px;
+      text-align: center;
+    }
+    
+    .game-board {
+      background: rgba(5, 150, 105, 0.2);
+      padding: 30px;
+      border-radius: 15px;
+      margin-bottom: 20px;
+      backdrop-filter: blur(10px);
+    }
+    
+    .card {
+      display: inline-block;
+      background: white;
+      color: black;
+      padding: 15px 10px;
+      margin: 5px;
+      border-radius: 8px;
+      font-weight: bold;
+      font-size: 18px;
+      min-width: 50px;
+      text-align: center;
+      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+    }
+    
+    .card.red {
+      color: #dc2626;
+    }
+    
+    .card.hidden {
+      background: #3b82f6;
+      color: white;
+    }
+    
+    .options {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 15px;
+      margin: 20px 0;
+    }
+    
+    .option-btn {
+      background: #3b82f6;
+      color: white;
+      border: none;
+      padding: 20px;
+      border-radius: 10px;
+      font-size: 18px;
+      font-weight: bold;
+      cursor: pointer;
+      transition: all 0.3s;
+    }
+    
+    .option-btn:hover {
+      background: #2563eb;
+      transform: translateY(-2px);
+    }
+    
+    .option-btn.correct {
+      background: #16a34a !important;
+      animation: pulse 1s infinite;
+    }
+    
+    .option-btn.wrong {
+      background: #dc2626 !important;
+      animation: shake 0.5s;
+    }
+    
+    .option-btn:disabled {
+      cursor: not-allowed;
+      opacity: 0.7;
+    }
+    
+    .controls {
+      display: flex;
+      gap: 15px;
+      justify-content: center;
+      flex-wrap: wrap;
+      margin: 20px 0;
+    }
+    
+    .btn {
+      background: #059669;
+      color: white;
+      border: none;
+      padding: 12px 24px;
+      border-radius: 25px;
+      font-weight: bold;
+      cursor: pointer;
+      transition: all 0.3s;
+    }
+    
+    .btn:hover {
+      background: #047857;
+      transform: translateY(-2px);
+    }
+    
+    .btn.secondary {
+      background: #6b7280;
+    }
+    
+    .btn.danger {
+      background: #dc2626;
+    }
+    
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+      gap: 15px;
+      margin: 20px 0;
+    }
+    
+    .stat-card {
+      background: rgba(0, 0, 0, 0.3);
+      padding: 15px;
+      border-radius: 10px;
+      text-align: center;
+    }
+    
+    .stat-value {
+      font-size: 24px;
+      font-weight: bold;
+      color: #f59e0b;
+    }
+    
+    .progress-bar {
+      width: 100%;
+      height: 10px;
+      background: rgba(255, 255, 255, 0.2);
+      border-radius: 5px;
+      overflow: hidden;
+      margin: 10px 0;
+    }
+    
+    .progress-fill {
+      height: 100%;
+      background: #f59e0b;
+      transition: width 0.5s ease;
+    }
+    
+    .section {
+      background: rgba(0, 0, 0, 0.2);
+      padding: 20px;
+      border-radius: 10px;
+      margin: 20px 0;
+    }
+    
+    .hidden {
+      display: none;
+    }
+    
+    .tabs {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 20px;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+    
+    .tab {
+      background: #6b7280;
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 20px;
+      cursor: pointer;
+      transition: all 0.3s;
+    }
+    
+    .tab.active {
+      background: #3b82f6;
+    }
+    
+    .install-prompt {
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      background: #059669;
+      color: white;
+      border: none;
+      padding: 15px 25px;
+      border-radius: 25px;
+      font-weight: bold;
+      cursor: pointer;
+      box-shadow: 0 4px 15px rgba(5, 150, 105, 0.4);
+      z-index: 1000;
+    }
+    
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.7; }
+    }
+    
+    @keyframes shake {
+      0%, 100% { transform: translateX(0); }
+      25% { transform: translateX(-5px); }
+      75% { transform: translateX(5px); }
+    }
+    
+    @media (max-width: 768px) {
+      .options {
+        grid-template-columns: 1fr;
+      }
+      
+      .stats {
+        grid-template-columns: repeat(2, 1fr);
+      }
+      
+      .controls {
+        flex-direction: column;
+        align-items: center;
+      }
+      
+      .tabs {
+        flex-direction: column;
+      }
+    }
+  </style>
 </head>
 <body>
-  <noscript>Você precisa habilitar JavaScript para usar este app.</noscript>
-  
-  <!-- Loading Screen -->
-  <div id="loading" class="loading-screen">
-    <div class="loading-content">
-      <div class="loading-icon">🃏</div>
-      <h1>Poker Trainer</h1>
-      <div class="loading-bar">
-        <div class="loading-progress"></div>
+  <div class="container">
+    <div class="header">
+      <h1>🎯 Poker Probability Trainer</h1>
+      <p>Treine suas habilidades de cálculo de probabilidades no poker</p>
+    </div>
+    
+    <!-- Navigation Tabs -->
+    <div class="tabs">
+      <button class="tab active" onclick="showTab('game')">🎮 Jogo</button>
+      <button class="tab" onclick="showTab('stats')">📊 Estatísticas</button>
+      <button class="tab" onclick="showTab('history')">📝 Histórico</button>
+      <button class="tab" onclick="showTab('about')">ℹ️ Sobre</button>
+    </div>
+    
+    <!-- Game Tab -->
+    <div id="game-tab" class="tab-content">
+      <!-- Stats Display -->
+      <div class="stats">
+        <div class="stat-card">
+          <div class="stat-value" id="score">0/0</div>
+          <div>Acertos</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value" id="accuracy">0%</div>
+          <div>Precisão</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value" id="streak">0</div>
+          <div>Sequência</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value" id="hand-count">1/50</div>
+          <div>Mão</div>
+        </div>
       </div>
-      <p>Carregando seu treinador de poker...</p>
+      
+      <!-- Progress Bar -->
+      <div class="progress-bar">
+        <div class="progress-fill" id="progress" style="width: 2%;"></div>
+      </div>
+      
+      <!-- Game Board -->
+      <div class="game-board">
+        <div style="text-align: center; margin-bottom: 30px;">
+          <h3>Mesa Comunitária</h3>
+          <div id="community-cards">
+            <span style="color: #9ca3af;">Aguardando o flop...</span>
+          </div>
+        </div>
+        
+        <div style="text-align: center; margin-bottom: 30px;">
+          <h3>Suas Cartas</h3>
+          <div id="player-cards">
+            <!-- Cartas serão inseridas aqui -->
+          </div>
+        </div>
+        
+        <div style="text-align: center;">
+          <h3 id="opponents-title">Oponentes (3)</h3>
+          <div id="opponent-cards">
+            <!-- Cartas dos oponentes serão inseridas aqui -->
+          </div>
+        </div>
+      </div>
+      
+      <!-- Question Section -->
+      <div class="section">
+        <h2 style="text-align: center; margin-bottom: 20px;">
+          Qual a probabilidade de você ganhar esta mão?
+        </h2>
+        <div class="options" id="options">
+          <!-- Options será inseridas aqui -->
+        </div>
+        <div class="controls">
+          <button class="btn danger" onclick="foldHand()">🚫 Fold</button>
+          <button class="btn secondary" onclick="newGame()">🔄 Nova Mão</button>
+        </div>
+        <div id="result-section" class="hidden" style="text-align: center; margin-top: 20px;">
+          <div id="result-message"></div>
+          <div id="correct-answer" style="margin: 10px 0;"></div>
+          <button class="btn" id="next-button" onclick="nextPhase()">➡️ Próxima Fase</button>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Stats Tab -->
+    <div id="stats-tab" class="tab-content hidden">
+      <div class="section">
+        <h2>📊 Suas Estatísticas</h2>
+        <div class="stats">
+          <div class="stat-card">
+            <div class="stat-value" id="total-games">0</div>
+            <div>Jogos Completos</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-value" id="best-streak">0</div>
+            <div>Melhor Sequência</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-value" id="total-folds">0</div>
+            <div>Total de Folds</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-value" id="avg-accuracy">0%</div>
+            <div>Precisão Média</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <!-- History Tab -->
+    <div id="history-tab" class="tab-content hidden">
+      <div class="section">
+        <h2>📝 Histórico Recente</h2>
+        <div id="history-list">
+          <p style="text-align: center; color: #9ca3af;">Jogue algumas mãos para ver o histórico</p>
+        </div>
+      </div>
+    </div>
+    
+    <!-- About Tab -->
+    <div id="about-tab" class="tab-content hidden">
+      <div class="section">
+        <h2>ℹ️ Sobre o Poker Trainer</h2>
+        <p style="line-height: 1.6; margin-bottom: 20px;">
+          Este é um treinador de probabilidades de poker desenvolvido para ajudar você a melhorar 
+          suas habilidades de cálculo de odds no Texas Hold'em.
+        </p>
+        <h3 style="margin: 20px 0 10px 0;">🎯 Como Jogar:</h3>
+        <ul style="line-height: 1.8; margin-left: 20px;">
+          <li>Analise suas cartas e a mesa</li>
+          <li>Estime a probabilidade de ganhar</li>
+          <li>Escolha uma das 4 opções</li>
+          <li>Receba feedback imediato</li>
+          <li>Complete 50 mãos para finalizar</li>
+        </ul>
+        <h3 style="margin: 20px 0 10px 0;">📱 PWA Features:</h3>
+        <ul style="line-height: 1.8; margin-left: 20px;">
+          <li>Funciona offline após instalação</li>
+          <li>Dados salvos localmente</li>
+          <li>Interface otimizada para mobile</li>
+          <li>Instalável como app nativo</li>
+        </ul>
+      </div>
     </div>
   </div>
   
-  <!-- App Container -->
-  <div id="root" style="display: none;"></div>
-  
-  <!-- PWA Install Elements -->
-  <button id="installButton" class="install-prompt" style="display: none;">
+  <!-- Install Button -->
+  <button id="install-btn" class="install-prompt" style="display: none;">
     📱 Instalar App
   </button>
   
-  <div id="updatePrompt" class="update-prompt" style="display: none;">
-    <div class="update-content">
-      <span>🔄 Nova versão disponível!</span>
-      <button id="updateButton">Atualizar</button>
-      <button id="dismissUpdate">×</button>
-    </div>
-  </div>
-  
-  <div id="pwaStatus" class="pwa-status" style="display: none;"></div>
-  
-  <!-- Notification Container -->
-  <div id="notifications" class="notification-container"></div>
-  
-  <!-- Scripts -->
-  <script src="app.js"></script>
-  
-  <!-- PWA Registration -->
   <script>
-    // Loading screen
-    window.addEventListener('load', () => {
-      setTimeout(() => {
-        document.getElementById('loading').style.display = 'none';
-        document.getElementById('root').style.display = 'block';
-      }, 2000);
-    });
-
-    // Service Worker Registration
-    if ('serviceWorker' in navigator) {
-      window.addEventListener('load', () => {
-        navigator.serviceWorker.register('../public/sw.js', {
-          scope: '/'
-        })
-        .then((registration) => {
-          console.log('✅ SW registrado:', registration.scope);
-          
-          // Check for updates
-          registration.addEventListener('updatefound', () => {
-            const newWorker = registration.installing;
-            newWorker.addEventListener('statechange', () => {
-              if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-                showUpdatePrompt();
-              }
-            });
-          });
-        })
-        .catch((error) => {
-          console.log('❌ SW registration failed:', error);
-        });
-      });
+    // ======================
+    // POKER TRAINER LOGIC
+    // ======================
+    
+    // Game State
+    let gameState = {
+      currentHand: 1,
+      score: { correct: 0, total: 0, folded: 0 },
+      streak: 0,
+      bestStreak: 0,
+      totalGames: 0,
+      phase: 'preflop', // preflop, flop, turn, river
+      playerCards: [],
+      communityCards: [],
+      opponents: 3,
+      currentProbability: 0,
+      options: [],
+      correctAnswer: 0,
+      showingResult: false,
+      history: []
+    };
+    
+    // Card data
+    const suits = ['♠', '♥', '♦', '♣'];
+    const values = ['2', '3', '4', '5', '6', '7', '8', '9', 'T', 'J', 'Q', 'K', 'A'];
+    const suitColors = { '♠': 'black', '♥': 'red', '♦': 'red', '♣': 'black' };
+    
+    // Utility functions
+    function shuffle(array) {
+      const newArray = [...array];
+      for (let i = newArray.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [newArray[i], newArray[j]] = [newArray[j], newArray[i]];
+      }
+      return newArray;
     }
-
-    // PWA Install
+    
+    function createDeck() {
+      const deck = [];
+      for (let suit of suits) {
+        for (let value of values) {
+          deck.push({ value, suit });
+        }
+      }
+      return deck;
+    }
+    
+    function getCardValue(value) {
+      if (value === 'A') return 14;
+      if (value === 'K') return 13;
+      if (value === 'Q') return 12;
+      if (value === 'J') return 11;
+      if (value === 'T') return 10;
+      return parseInt(value);
+    }
+    
+    function calculateProbability(playerCards, communityCards, opponents) {
+      // Simplified probability calculation
+      const totalCards = playerCards.length + communityCards.length;
+      let baseProb = 0.5;
+      
+      // Adjust based on cards
+      const highCards = playerCards.filter(card => ['A', 'K', 'Q', 'J'].includes(card.value)).length;
+      baseProb += highCards * 0.1;
+      
+      // Adjust for opponents
+      baseProb *= Math.pow(0.85, opponents - 1);
+      
+      // Adjust for phase
+      const phaseMultiplier = {
+        'preflop': 0.7,
+        'flop': 0.85,
+        'turn': 0.95,
+        'river': 1.0
+      };
+      
+      baseProb *= phaseMultiplier[gameState.phase];
+      
+      return Math.min(0.95, Math.max(0.05, baseProb));
+    }
+    
+    function generateOptions(correctProb) {
+      const options = [correctProb];
+      const range = 0.15;
+      
+      while (options.length < 4) {
+        const variation = (Math.random() - 0.5) * range * 2;
+        const newOption = Math.max(0.05, Math.min(0.95, correctProb + variation));
+        
+        if (!options.some(opt => Math.abs(opt - newOption) < 0.05)) {
+          options.push(newOption);
+        }
+      }
+      
+      return shuffle(options);
+    }
+    
+    function renderCard(card, isHidden = false) {
+      const colorClass = suitColors[card.suit] === 'red' ? 'red' : '';
+      const hiddenClass = isHidden ? 'hidden' : '';
+      
+      return `<span class="card ${colorClass} ${hiddenClass}">
+        ${isHidden ? '?' : card.value + card.suit}
+      </span>`;
+    }
+    
+    function dealNewHand() {
+      const deck = shuffle(createDeck());
+      gameState.opponents = Math.floor(Math.random() * 7) + 2; // 2-8 opponents
+      
+      gameState.playerCards = deck.slice(0, 2);
+      gameState.communityCards = [];
+      gameState.phase = 'preflop';
+      gameState.showingResult = false;
+      
+      gameState.currentProbability = calculateProbability(
+        gameState.playerCards, 
+        gameState.communityCards, 
+        gameState.opponents
+      );
+      
+      gameState.correctAnswer = gameState.currentProbability;
+      gameState.options = generateOptions(gameState.currentProbability);
+      
+      updateDisplay();
+    }
+    
+    function updateDisplay() {
+      // Update stats
+      document.getElementById('score').textContent = 
+        `${gameState.score.correct}/${gameState.score.total}`;
+      
+      const accuracy = gameState.score.total > 0 ? 
+        Math.round((gameState.score.correct / gameState.score.total) * 100) : 0;
+      document.getElementById('accuracy').textContent = `${accuracy}%`;
+      
+      document.getElementById('streak').textContent = gameState.streak;
+      document.getElementById('hand-count').textContent = `${gameState.currentHand}/50`;
+      
+      // Update progress
+      const progress = (gameState.currentHand / 50) * 100;
+      document.getElementById('progress').style.width = `${progress}%`;
+      
+      // Update cards
+      document.getElementById('player-cards').innerHTML = 
+        gameState.playerCards.map(card => renderCard(card)).join('');
+      
+      if (gameState.communityCards.length === 0) {
+        document.getElementById('community-cards').innerHTML = 
+          '<span style="color: #9ca3af;">Aguardando o flop...</span>';
+      } else {
+        document.getElementById('community-cards').innerHTML = 
+          gameState.communityCards.map(card => renderCard(card)).join('');
+      }
+      
+      document.getElementById('opponents-title').textContent = 
+        `Oponentes (${gameState.opponents})`;
+      
+      // Create opponent placeholder cards
+      let opponentHTML = '';
+      for (let i = 0; i < gameState.opponents; i++) {
+        opponentHTML += `
+          <div style="display: inline-block; margin: 10px;">
+            <div style="font-size: 12px; margin-bottom: 5px;">Op. ${i + 1}</div>
+            ${renderCard({ value: '?', suit: '?' }, true)}
+            ${renderCard({ value: '?', suit: '?' }, true)}
+          </div>
+        `;
+      }
+      document.getElementById('opponent-cards').innerHTML = opponentHTML;
+      
+      // Update options
+      const optionsHTML = gameState.options.map((option, index) => {
+        const percentage = Math.round(option * 100);
+        return `<button class="option-btn" onclick="selectOption(${option})">${percentage}%</button>`;
+      }).join('');
+      
+      document.getElementById('options').innerHTML = optionsHTML;
+      
+      // Hide result section
+      document.getElementById('result-section').classList.add('hidden');
+    }
+    
+    function selectOption(selectedOption) {
+      if (gameState.showingResult) return;
+      
+      gameState.showingResult = true;
+      const isCorrect = Math.abs(selectedOption - gameState.correctAnswer) < 0.01;
+      
+      // Update score
+      gameState.score.total++;
+      if (isCorrect) {
+        gameState.score.correct++;
+        gameState.streak++;
+        gameState.bestStreak = Math.max(gameState.bestStreak, gameState.streak);
+      } else {
+        gameState.streak = 0;
+      }
+      
+      // Add to history
+      gameState.history.unshift({
+        hand: gameState.currentHand,
+        phase: gameState.phase,
+        estimated: selectedOption,
+        actual: gameState.correctAnswer,
+        isCorrect: isCorrect,
+        timestamp: new Date()
+      });
+      
+      // Keep only last 20 hands
+      if (gameState.history.length > 20) {
+        gameState.history.pop();
+      }
+      
+      // Update option buttons
+      const buttons = document.querySelectorAll('.option-btn');
+      buttons.forEach((btn, index) => {
+        btn.disabled = true;
+        const optionValue = gameState.options[index];
+        
+        if (Math.abs(optionValue - gameState.correctAnswer) < 0.01) {
+          btn.classList.add('correct');
+        } else if (Math.abs(optionValue - selectedOption) < 0.01) {
+          btn.classList.add('wrong');
+        }
+      });
+      
+      // Show result
+      document.getElementById('result-message').innerHTML = isCorrect ? 
+        '<span style="color: #16a34a; font-weight: bold;">✅ Correto!</span>' :
+        '<span style="color: #dc2626; font-weight: bold;">❌ Incorreto!</span>';
+      
+      document.getElementById('correct-answer').innerHTML = 
+        `Probabilidade correta: <strong style="color: #f59e0b;">${Math.round(gameState.correctAnswer * 100)}%</strong>`;
+      
+      document.getElementById('result-section').classList.remove('hidden');
+      
+      // Update next button text
+      const nextBtn = document.getElementById('next-button');
+      if (gameState.phase === 'river') {
+        nextBtn.textContent = '🎯 Próxima Mão';
+        nextBtn.onclick = () => newGame();
+      } else {
+        const nextPhase = {
+          'preflop': 'Flop',
+          'flop': 'Turn', 
+          'turn': 'River'
+        }[gameState.phase];
+        nextBtn.textContent = `➡️ ${nextPhase}`;
+        nextBtn.onclick = () => nextPhase();
+      }
+      
+      updateDisplay();
+      saveGame();
+    }
+    
+    function nextPhase() {
+      if (gameState.phase === 'river') {
+        newGame();
+        return;
+      }
+      
+      const deck = shuffle(createDeck());
+      // Simple simulation - just add community cards
+      
+      if (gameState.phase === 'preflop') {
+        gameState.communityCards = deck.slice(0, 3); // Flop
+        gameState.phase = 'flop';
+      } else if (gameState.phase === 'flop') {
+        gameState.communityCards.push(deck[0]); // Turn
+        gameState.phase = 'turn';
+      } else if (gameState.phase === 'turn') {
+        gameState.communityCards.push(deck[1]); // River
+        gameState.phase = 'river';
+      }
+      
+      gameState.currentProbability = calculateProbability(
+        gameState.playerCards, 
+        gameState.communityCards, 
+        gameState.opponents
+      );
+      
+      gameState.correctAnswer = gameState.currentProbability;
+      gameState.options = generateOptions(gameState.currentProbability);
+      gameState.showingResult = false;
+      
+      updateDisplay();
+    }
+    
+    function foldHand() {
+      gameState.score.folded++;
+      newGame();
+    }
+    
+    function newGame() {
+      if (gameState.currentHand >= 50) {
+        finishGame();
+        return;
+      }
+      
+      gameState.currentHand++;
+      dealNewHand();
+    }
+    
+    function finishGame() {
+      gameState.totalGames++;
+      alert(`🏆 Jogo finalizado!\n\nAcertos: ${gameState.score.correct}/${gameState.score.total}\nPrecisão: ${Math.round((gameState.score.correct / gameState.score.total) * 100)}%\nMelhor sequência: ${gameState.bestStreak}`);
+      
+      // Reset for new game
+      gameState.currentHand = 1;
+      gameState.score = { correct: 0, total: 0, folded: 0 };
+      gameState.streak = 0;
+      
+      dealNewHand();
+      saveGame();
+    }
+    
+    // Tab system
+    function showTab(tabName) {
+      // Hide all tabs
+      document.querySelectorAll('.tab-content').forEach(tab => {
+        tab.classList.add('hidden');
+      });
+      
+      // Remove active class from all tab buttons
+      document.querySelectorAll('.tab').forEach(tab => {
+        tab.classList.remove('active');
+      });
+      
+      // Show selected tab
+      document.getElementById(tabName + '-tab').classList.remove('hidden');
+      
+      // Add active class to clicked tab
+      event.target.classList.add('active');
+      
+      // Update content based on tab
+      if (tabName === 'stats') {
+        updateStatsTab();
+      } else if (tabName === 'history') {
+        updateHistoryTab();
+      }
+    }
+    
+    function updateStatsTab() {
+      document.getElementById('total-games').textContent = gameState.totalGames;
+      document.getElementById('best-streak').textContent = gameState.bestStreak;
+      document.getElementById('total-folds').textContent = gameState.score.folded;
+      
+      const avgAccuracy = gameState.score.total > 0 ? 
+        Math.round((gameState.score.correct / gameState.score.total) * 100) : 0;
+      document.getElementById('avg-accuracy').textContent = `${avgAccuracy}%`;
+    }
+    
+    function updateHistoryTab() {
+      const historyContainer = document.getElementById('history-list');
+      
+      if (gameState.history.length === 0) {
+        historyContainer.innerHTML = '<p style="text-align: center; color: #9ca3af;">Jogue algumas mãos para ver o histórico</p>';
+        return;
+      }
+      
+      const historyHTML = gameState.history.map((hand, index) => {
+        const resultClass = hand.isCorrect ? 'correct' : 'wrong';
+        const resultIcon = hand.isCorrect ? '✅' : '❌';
+        
+        return `
+          <div style="background: rgba(0,0,0,0.3); padding: 15px; border-radius: 10px; margin-bottom: 10px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+              <strong>Mão #${hand.hand} - ${hand.phase}</strong>
+              <span style="font-size: 20px;">${resultIcon}</span>
+            </div>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; font-size: 14px;">
+              <div>Sua estimativa: <strong>${Math.round(hand.estimated * 100)}%</strong></div>
+              <div>Probabilidade real: <strong>${Math.round(hand.actual * 100)}%</strong></div>
+            </div>
+          </div>
+        `;
+      }).join('');
+      
+      historyContainer.innerHTML = historyHTML;
+    }
+    
+    // Local Storage
+    function saveGame() {
+      try {
+        localStorage.setItem('poker_trainer_data', JSON.stringify(gameState));
+      } catch (e) {
+        console.log('Could not save game data');
+      }
+    }
+    
+    function loadGame() {
+      try {
+        const saved = localStorage.getItem('poker_trainer_data');
+        if (saved) {
+          const savedState = JSON.parse(saved);
+          // Merge saved state with current state
+          gameState = { ...gameState, ...savedState };
+        }
+      } catch (e) {
+        console.log('Could not load game data');
+      }
+    }
+    
+    // PWA Installation
     let deferredPrompt;
-    const installButton = document.getElementById('installButton');
-
+    
     window.addEventListener('beforeinstallprompt', (e) => {
       e.preventDefault();
       deferredPrompt = e;
-      installButton.style.display = 'block';
-      showNotification('📱 App pode ser instalado!', 'info');
+      
+      const installBtn = document.getElementById('install-btn');
+      installBtn.style.display = 'block';
+      
+      installBtn.addEventListener('click', async () => {
+        if (!deferredPrompt) return;
+        
+        deferredPrompt.prompt();
+        const { outcome } = await deferredPrompt.userChoice;
+        
+        if (outcome === 'accepted') {
+          installBtn.style.display = 'none';
+        }
+        
+        deferredPrompt = null;
+      });
     });
-
-    installButton.addEventListener('click', async () => {
-      if (!deferredPrompt) return;
-      
-      deferredPrompt.prompt();
-      const { outcome } = await deferredPrompt.userChoice;
-      
-      if (outcome === 'accepted') {
-        showNotification('🎉 App instalado com sucesso!', 'success');
-        installButton.style.display = 'none';
-      }
-      
-      deferredPrompt = null;
-    });
-
+    
     window.addEventListener('appinstalled', () => {
-      showNotification('🚀 App instalado! Agora funciona offline.', 'success');
-      installButton.style.display = 'none';
+      document.getElementById('install-btn').style.display = 'none';
     });
-
-    // Update Prompt
-    function showUpdatePrompt() {
-      document.getElementById('updatePrompt').style.display = 'block';
+    
+    // Initialize game
+    function initGame() {
+      loadGame();
+      dealNewHand();
+      updateDisplay();
     }
-
-    document.getElementById('updateButton').addEventListener('click', () => {
-      window.location.reload();
-    });
-
-    document.getElementById('dismissUpdate').addEventListener('click', () => {
-      document.getElementById('updatePrompt').style.display = 'none';
-    });
-
-    // Notifications
-    function showNotification(message, type = 'info') {
-      const notification = document.createElement('div');
-      notification.className = `notification ${type}`;
-      notification.innerHTML = `
-        <span>${message}</span>
-        <button onclick="this.parentElement.remove()">×</button>
-      `;
-      
-      document.getElementById('notifications').appendChild(notification);
-      
-      setTimeout(() => {
-        notification.remove();
-      }, 5000);
-    }
-
-    // PWA Status Detection
-    function detectPWAStatus() {
-      const isPWA = window.matchMedia('(display-mode: standalone)').matches || 
-                    window.navigator.standalone === true;
-      
-      if (isPWA) {
-        showNotification('🎯 Rodando como PWA instalado!', 'success');
-        document.body.classList.add('pwa-mode');
-      }
-    }
-
-    // Online/Offline Status
-    function updateNetworkStatus() {
-      const status = navigator.onLine ? 'online' : 'offline';
-      document.body.className = document.body.className.replace(/network-\w+/, '');
-      document.body.classList.add(`network-${status}`);
-      
-      if (!navigator.onLine) {
-        showNotification('📱 Modo offline ativado', 'warning');
-      } else {
-        showNotification('🌐 Conectado novamente', 'success');
-      }
-    }
-
-    window.addEventListener('online', updateNetworkStatus);
-    window.addEventListener('offline', updateNetworkStatus);
-    window.addEventListener('load', detectPWAStatus);
-
-    // Initialize
-    updateNetworkStatus();
+    
+    // Start the game
+    initGame();
+    
+    console.log('🎯 Poker Trainer carregado com sucesso!');
+  </script>
+  
+  <!-- Simple Manifest inline -->
+  <script>
+    // Create simple manifest
+    const manifestData = {
+      "name": "Poker Probability Trainer",
+      "short_name": "PokerTrainer",
+      "description": "Treinador de probabilidades de poker",
+      "start_url": "/",
+      "display": "standalone",
+      "background_color": "#1f2937",
+      "theme_color": "#059669",
+      "icons": [
+        {
+          "src": "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' fill='%23059669'/><text x='50' y='60' font-size='40' text-anchor='middle' fill='white'>🃏</text></svg>",
+          "sizes": "192x192",
+          "type": "image/svg+xml"
+        }
+      ]
+    };
+    
+    const blob = new Blob([JSON.stringify(manifestData)], {type: 'application/json'});
+    const manifestURL = URL.createObjectURL(blob);
+    
+    const link = document.createElement('link');
+    link.rel = 'manifest';
+    link.href = manifestURL;
+    document.head.appendChild(link);
   </script>
 </body>
 </html>
